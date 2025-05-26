@@ -17,10 +17,11 @@ permissions:
   contents: write
 
 jobs:
-  generate-report:
+  setup:
+    name: Setup Environment
     runs-on: ubuntu-latest
-    environment: WT_WeeklyTriggerEnv
-
+    outputs:
+      python-version: ${{ steps.setup-python.outputs.python-version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,6 +30,7 @@ jobs:
           fetch-depth: 0
 
       - name: Call setup-python
+        id: setup-python
         uses: ./.github/workflows/PythonSetup
 
       - name: Set up rclone
@@ -38,6 +40,15 @@ jobs:
 
       - name: DEBUG - Check rclone connection
         run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
+
+  generate-report:
+    name: Generate Weekly Report
+    runs-on: ubuntu-latest
+    needs: setup
+    environment: WT_WeeklyTriggerEnv
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: DEBUG - Check pip health
         run: |
@@ -49,6 +60,14 @@ jobs:
 
       - name: Run weekly report script
         run: python GenerateReport.py
+
+  commit-changes:
+    name: Commit & Push Changes
+    runs-on: ubuntu-latest
+    needs: generate-report
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: DEBUG - Show changed files
         run: |
@@ -67,6 +86,19 @@ jobs:
           git commit -m "📦 Update BasePackageWithDependencies on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in BasePackageWithDependencies"
 
           git push origin HEAD:${{ github.ref_name }}
+
+  upload-report:
+    name: Upload to Google Drive
+    runs-on: ubuntu-latest
+    needs: generate-report
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up rclone
+        uses: ./.github/workflows/RcloneSetup
+        with:
+          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
 
       - name: Upload to Google Drive
         run: |
