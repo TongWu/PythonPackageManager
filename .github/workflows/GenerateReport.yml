@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   precheck:
-    name: Run Pre-Check Before Run Report Generation
+    name: Pre-Check for Python and Rclone
     runs-on: ubuntu-latest
     environment: WT_WeeklyTriggerEnv
     steps:
