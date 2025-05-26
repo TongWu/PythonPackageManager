@@ -1,0 +1,63 @@
+name: Generate Weekly Report
+
+on:
+  schedule:
+    - cron: '0 0 * * MON'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    environment: WT_WeeklyTriggerEnv
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Call setup-python
+        uses: ./.github/workflows/PythonSetup.yml
+
+      - name: Call setup-rclone
+        uses: ./.github/workflows/RcloneSetup.yml
+
+      - name: DEBUG - Check rclone connection
+        run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
+
+      - name: DEBUG - Check pip health
+        run: |
+          pip --version
+          python -c "import pip._vendor.resolvelib; print(pip._vendor.resolvelib.__file__)"
+
+      - name: DEBUG - Print config.env
+        run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
+
+      - name: Run weekly report script
+        run: python GenerateReport.py
+
+      - name: DEBUG - Show changed files
+        run: |
+          git status
+          git diff --name-only
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add WeeklyReport/* || true
+          git commit -m "📝 Update WeeklyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in WeeklyReport"
+
+          git add src/BasePackageWithDependencies.csv || true
+          git commit -m "📦 Update BasePackageWithDependencies on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in BasePackageWithDependencies"
+
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Upload to Google Drive
+        run: |
+          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ --create-empty-src-dirs --verbose --checkers=8 --stats=10s
