@@ -21,10 +21,10 @@ jobs:
           fetch-depth: 0
 
       - name: Call setup-python
-        uses: ./.github/workflows/PythonSetup.yml
+        uses: ./.github/workflows/PythonSetup
 
       - name: Call setup-rclone
-        uses: ./.github/workflows/RcloneSetup.yml
+        uses: ./.github/workflows/RcloneSetup
 
       - name: DEBUG - Check rclone connection
         run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
