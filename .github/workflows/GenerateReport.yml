@@ -17,13 +17,43 @@ permissions:
   contents: write
 
 jobs:
+  precheck:
+    name: Run Pre-Check Before Run Report Generation
+    runs-on: ubuntu-latest
+    environment: WT_WeeklyTriggerEnv
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Call setup-python
+        id: setup-python
+        uses: ./.github/workflows/PythonSetup
+
+      - name: DEBUG - Check pip health
+        run: |
+          pip --version
+          python -c "import pip._vendor.resolvelib; print(pip._vendor.resolvelib.__file__)"
+
+      - name: DEBUG - Print config.env
+        run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
+
+      - name: Set up rclone
+        uses: ./.github/workflows/RcloneSetup
+        with:
+          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
+
+      - name: DEBUG - Check rclone connection
+        run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
+
+      - name: Upload to Google Drive
+        run: |
+          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ --create-empty-src-dirs --verbose --checkers=8 --stats=10s
+
   generate-report:
     name: Generate Weekly Report
     runs-on: ubuntu-latest
-    needs: setup
+    needs: precheck
     environment: WT_WeeklyTriggerEnv
-    outputs:
-      python-version: ${{ steps.setup-python.outputs.python-version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -66,8 +96,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: WT_WeeklyTriggerEnv
     needs: generate-report
-    outputs:
-      python-version: ${{ steps.setup-python.outputs.python-version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
