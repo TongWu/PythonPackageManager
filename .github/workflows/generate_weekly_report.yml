@@ -11,6 +11,7 @@ permissions:
 jobs:
   run-weekly-report:
     runs-on: ubuntu-latest
+    environment: WT_WeeklyTriggerEnv
 
     steps:
       - name: Checkout repository
@@ -37,9 +38,7 @@ jobs:
           
       - name: DEBUG - Print config.env values
         run: |
-          echo "FULL_RELOAD_PACKAGES=$(grep FULL_RELOAD_PACKAGES .env | cut -d '=' -f2)"
-          echo "BASE_PACKAGE_CSV=$(grep BASE_PACKAGE_CSV .env | cut -d '=' -f2)"
-          echo "REQUIREMENTS_FILE=$(grep REQUIREMENTS_FILE .env | cut -d '=' -f2)"
+          grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
 
       - name: Run weekly report script
         run: python GenerateReport.py
@@ -54,11 +53,25 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
       
-          git add WeeklyReport/*
+          git add WeeklyReport/* || true
           git commit -m "📝 Update WeeklyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in WeeklyReport"
       
-          git add src/BasePackageWithDependencies.csv
+          git add src/BasePackageWithDependencies.csv || true
           git commit -m "📦 Update BasePackageWithDependencies on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in BasePackageWithDependencies"
       
           git push origin HEAD:${{ github.ref_name }}
-          
+
+      - name: Install rclone
+        run: |
+          curl https://rclone.org/install.sh | sudo bash
+          rclone version
+
+      - name: Set up rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONF_BASE64 }}" | base64 -d > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: Upload WeeklyReport to Google Drive
+        run: |
+          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ --create-empty-src-dirs --verbose --checkers=8 --stats=10s
