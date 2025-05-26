@@ -1,4 +1,4 @@
-name: Generate Weekly Report
+name: Generate Report
 
 on:
   schedule:
