@@ -31,6 +31,22 @@ jobs:
           pip install --force-reinstall --upgrade pip
           pip install -r requirements.txt --no-cache-dir
 
+      - name: Install rclone
+        run: |
+          curl https://rclone.org/install.sh | sudo bash
+          rclone version
+
+      - name: Set up rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONF_BASE64 }}" | base64 -d > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: Check rclone connection and list root
+        run: |
+          echo "📂 Checking Google Drive root folders:"
+          rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
+
       - name: DEBUG - Check pip health
         run: |
           pip --version
@@ -60,17 +76,6 @@ jobs:
           git commit -m "📦 Update BasePackageWithDependencies on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in BasePackageWithDependencies"
       
           git push origin HEAD:${{ github.ref_name }}
-
-      - name: Install rclone
-        run: |
-          curl https://rclone.org/install.sh | sudo bash
-          rclone version
-
-      - name: Set up rclone
-        run: |
-          mkdir -p ~/.config/rclone
-          echo "${{ secrets.RCLONE_CONF_BASE64 }}" | base64 -d > ~/.config/rclone/rclone.conf
-          chmod 600 ~/.config/rclone/rclone.conf
 
       - name: Upload WeeklyReport to Google Drive
         run: |
