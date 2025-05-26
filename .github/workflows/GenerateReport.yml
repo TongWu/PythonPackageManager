@@ -23,8 +23,10 @@ jobs:
       - name: Call setup-python
         uses: ./.github/workflows/PythonSetup
 
-      - name: Call setup-rclone
-        uses: ./.github/workflows/RcloneSetup
+      - name: Set up rclone
+        uses: ./.github/actions/RcloneSetup
+        with:
+          environment: WT_WeeklyTriggerEnv
 
       - name: DEBUG - Check rclone connection
         run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
