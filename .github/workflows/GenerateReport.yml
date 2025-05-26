@@ -26,7 +26,7 @@ jobs:
       - name: Set up rclone
         uses: ./.github/workflows/RcloneSetup
         with:
-          environment: WT_WeeklyTriggerEnv
+          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
 
       - name: DEBUG - Check rclone connection
         run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
