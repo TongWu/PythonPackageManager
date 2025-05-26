@@ -20,6 +20,7 @@ jobs:
   setup:
     name: Setup Environment
     runs-on: ubuntu-latest
+    environment: WT_WeeklyTriggerEnv
     outputs:
       python-version: ${{ steps.setup-python.outputs.python-version }}
     steps:
@@ -94,11 +95,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up rclone
-        uses: ./.github/workflows/RcloneSetup
-        with:
-          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
 
       - name: Upload to Google Drive
         run: |
