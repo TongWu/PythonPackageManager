@@ -18,7 +18,7 @@ runs:
 
     - name: Configure rclone
       env:
-        RCLONE_CONF_BASE64: ${{ secrets.RCLONE_CONF_BASE64 }}
+        RCLONE_CONF_BASE64: ${{ inputs.rclone_conf_base64 }}
       run: |
         mkdir -p ~/.config/rclone
         echo "$RCLONE_CONF_BASE64" | base64 -d > ~/.config/rclone/rclone.conf
