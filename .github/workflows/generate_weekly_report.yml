@@ -42,7 +42,7 @@ jobs:
           echo "${{ secrets.RCLONE_CONF_BASE64 }}" | base64 -d > ~/.config/rclone/rclone.conf
           chmod 600 ~/.config/rclone/rclone.conf
 
-      - name: Check rclone connection and list root
+      - name: DEBUG - Check rclone connection and list root
         run: |
           echo "📂 Checking Google Drive root folders:"
           rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
