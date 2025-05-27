@@ -107,8 +107,12 @@ jobs:
     environment: WT_WeeklyTriggerEnv
     needs: generate-report
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout latest commit from main
+        run: |
+          git init
+          git remote add origin https://github.com/${{ github.repository }}
+          git fetch origin main
+          git checkout origin/main
 
       - name: Set up rclone
         uses: ./.github/workflows/RcloneSetup
