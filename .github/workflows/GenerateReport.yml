@@ -125,3 +125,111 @@ jobs:
       - name: Upload to Google Drive
         run: |
           rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ --create-empty-src-dirs --verbose --checkers=8 --stats=10s
+
+  create_release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: generate-report
+    if: success()
+
+    steps:
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Checkout latest commit from main
+        run: |
+          git init
+          git remote add origin https://github.com/${{ github.repository }}
+          git fetch origin main
+          git checkout origin/main
+
+      - name: Find latest report set
+        id: find_latest
+        run: |
+          echo "📁 Scanning for latest report set..."
+          latest_json=$(find WeeklyReport -type f -name "WeeklyReport_*.json" | \
+            sed -E 's/\.json$//' | \
+            sort -t '_' -k2 | \
+            tail -n 1).json
+
+          if [[ -z "$latest_json" || ! -f "$latest_json" ]]; then
+            echo "❌ No valid JSON report found."
+            exit 1
+          fi
+
+          base_name="${latest_json%.json}"
+          csv_file="${base_name}.csv"
+          html_file="${base_name}.html"
+
+          echo "📝 Latest base: $base_name"
+          echo "📄 CSV:  $csv_file"
+          echo "📄 HTML: $html_file"
+          echo "📄 JSON: $latest_json"
+
+          echo "CSV_PATH=$csv_file" >> $GITHUB_ENV
+          echo "HTML_PATH=$html_file" >> $GITHUB_ENV
+          echo "JSON_PATH=$latest_json" >> $GITHUB_ENV
+
+          tag="weekly-$(basename "$base_name" | sed -E 's/^WeeklyReport_//')"
+          echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
+          echo "release_tag=$tag" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          release_name: "Weekly Report - ${{ env.RELEASE_TAG }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload CSV Report
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.CSV_PATH }}
+          asset_name: ${CSV_PATH##*/}
+          asset_content_type: text/csv
+
+      - name: Upload HTML Report
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.HTML_PATH }}
+          asset_name: ${HTML_PATH##*/}
+          asset_content_type: text/html
+
+      - name: Upload JSON Report
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.JSON_PATH }}
+          asset_name: ${JSON_PATH##*/}
+          asset_content_type: application/json
+
+      - name: Remove old release in same week
+        run: |
+          WEEK_PREFIX=$(echo "${{ env.RELEASE_TAG }}" | sed -E 's/^weekly-([0-9]{8}).*/\1/')
+          echo "🧹 Will cleanup previous releases in the same week: $WEEK_PREFIX"
+
+          # List all weekly releases
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | \
+            grep "^weekly-$WEEK_PREFIX" | \
+            grep -v "${{ env.RELEASE_TAG }}" | \
+            while read old_tag; do
+              echo "🗑️ Deleting old release and tag: $old_tag"
+              gh release delete "$old_tag" --yes || echo "⚠️ Failed to delete release $old_tag"
+              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$old_tag" || echo "⚠️ Failed to delete tag ref $old_tag"
+            done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
