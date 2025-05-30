@@ -17,8 +17,8 @@ permissions:
   contents: write
 
 jobs:
-  precheck:
-    name: Pre-Check for Python and Rclone
+  healthcheck:
+    name: Health Check
     runs-on: ubuntu-latest
     environment: WT_WeeklyTriggerEnv
     steps:
@@ -52,7 +52,7 @@ jobs:
   generate-report:
     name: Generate Weekly Report
     runs-on: ubuntu-latest
-    needs: precheck
+    needs: healthcheck
     environment: WT_WeeklyTriggerEnv
     steps:
       - name: Checkout repository
