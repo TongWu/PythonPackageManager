@@ -201,12 +201,12 @@ Located at `templates/weekly_report.html.j2`:
 
 ## GitHub Workflows
 
-### Scheduled Report: `.github/workflows/generate_weekly_report.yml`
+### Scheduled Report: `.github/workflows/GenerateReport.yml`
 
-- **Trigger**: Cron every Monday at UTC midnight  
+- **Trigger**: Cron every Monday & Thursday at UTC midnight (8AM for UTC+8 SGT)  
 - **Steps**: Checkout → Setup Python & rclone → Decode RCLONE_CONF → Run report → Commit & push outputs → Sync via rclone
 
-### Manual/Reusable: `.github/workflows/GenerateReport.yml`
+### Manual/Reusable: `.github/workflows/generate_weekly_report.yml`
 
 Reusable workflow for ad-hoc report generation.
 
