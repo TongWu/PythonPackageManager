@@ -153,25 +153,29 @@ jobs:
             sed -E 's/\.json$//' | \
             sort -t '_' -k2 | \
             tail -n 1).json
-
+      
           if [[ -z "$latest_json" || ! -f "$latest_json" ]]; then
             echo "❌ No valid JSON report found."
             exit 1
           fi
-
+      
           base_name="${latest_json%.json}"
           csv_file="${base_name}.csv"
           html_file="${base_name}.html"
-
+      
           echo "📝 Latest base: $base_name"
           echo "📄 CSV:  $csv_file"
           echo "📄 HTML: $html_file"
           echo "📄 JSON: $latest_json"
-
+      
           echo "CSV_PATH=$csv_file" >> $GITHUB_ENV
           echo "HTML_PATH=$html_file" >> $GITHUB_ENV
           echo "JSON_PATH=$latest_json" >> $GITHUB_ENV
-
+      
+          echo "CSV_FILENAME=$(basename "$csv_file")" >> $GITHUB_ENV
+          echo "HTML_FILENAME=$(basename "$html_file")" >> $GITHUB_ENV
+          echo "JSON_FILENAME=$(basename "$latest_json")" >> $GITHUB_ENV
+      
           tag="weekly-$(basename "$base_name" | sed -E 's/^WeeklyReport_//')"
           echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
           echo "release_tag=$tag" >> $GITHUB_OUTPUT
@@ -194,9 +198,9 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.CSV_PATH }}
-          asset_name: ${CSV_PATH##*/}
+          asset_name: ${{ env.CSV_FILENAME }}
           asset_content_type: text/csv
-
+      
       - name: Upload HTML Report
         uses: actions/upload-release-asset@v1
         env:
@@ -204,9 +208,9 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.HTML_PATH }}
-          asset_name: ${HTML_PATH##*/}
+          asset_name: ${{ env.HTML_FILENAME }}
           asset_content_type: text/html
-
+      
       - name: Upload JSON Report
         uses: actions/upload-release-asset@v1
         env:
@@ -214,7 +218,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.JSON_PATH }}
-          asset_name: ${JSON_PATH##*/}
+          asset_name: ${{ env.JSON_FILENAME }}
           asset_content_type: application/json
 
       - name: Remove old release in same week
