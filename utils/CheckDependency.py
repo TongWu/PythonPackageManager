@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import logging
 from datetime import datetime, timedelta
+import os
 
 # ---------------- Logging Configuration ----------------
 from logging import Formatter, StreamHandler
@@ -132,8 +133,14 @@ for base in pure_base_packages:
         row[f"dependsBy{idx}"] = dep
     rows.append(row)
 
-# Step 8: Export to CSV
+# Step 8: Export to CSV and base package list
 df = pd.DataFrame(rows)
 df.to_csv(BASE_PACKAGE_CSV, index=False)
-logger.info(f"✅ Exported to {BASE_PACKAGE_CSV}")
-# logger.info(f"\n{df}")
+logger.info(f"✅ Exported dependency map to {BASE_PACKAGE_CSV}")
+
+# Also export pure base package list
+base_package_list_file = os.path.join("src", "base_package_list.txt")
+with open(base_package_list_file, "w") as f:
+    for pkg in sorted(pure_base_packages):
+        f.write(pkg + "\n")
+logger.info(f"✅ Exported base package list to {base_package_list_file}")
