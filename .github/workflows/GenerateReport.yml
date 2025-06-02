@@ -180,7 +180,7 @@ jobs:
           fi
 
   create-weekly-release:
-    name: Create GitHub Release
+    name: Create Weekly Report Release
     runs-on: ubuntu-latest
     needs: generate-report
     if: success()
