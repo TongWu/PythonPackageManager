@@ -12,6 +12,9 @@ on:
       - '.github/workflows/RcloneSetup/**'
       - '.env'
       - 'src/**'
+      - 'requirements.txt'
+      - 'templates/**'
+      - 'utils/**'
 
 permissions:
   contents: write
