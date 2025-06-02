@@ -47,18 +47,30 @@ jobs:
 
       - name: Upload to Google Drive
         run: |
-          set +e  # Don't exit on error
-          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
-            --create-empty-src-dirs --verbose --checkers=8 --stats=10s --no-update-modtime
-          rc=$?
-          if [[ $rc -ne 0 ]]; then
-            echo "⚠️ rclone exited with code $rc"
-            if grep -q "403: User rate limit exceeded" <<< "$(rclone copy ... 2>&1)"; then
-              echo "⚠️ Ignored 403: User rate limit exceeded"
+          set +e  # Allow script to continue even if rclone fails
+      
+          echo "📤 Start uploading via rclone..."
+          OUTPUT=$(rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
+            --create-empty-src-dirs \
+            --verbose \
+            --checkers=8 \
+            --stats=10s \
+            --no-update-modtime \
+            2>&1)
+          STATUS=$?
+      
+          echo "$OUTPUT"
+      
+          if [[ $STATUS -ne 0 ]]; then
+            if echo "$OUTPUT" | grep -q "403: User rate limit exceeded"; then
+              echo "⚠️ Rclone hit user rate limit (403), but continuing anyway."
               exit 0
             else
-              exit $rc
+              echo "❌ Rclone failed with non-recoverable error."
+              exit $STATUS
             fi
+          else
+            echo "✅ Rclone upload completed successfully."
           fi
 
   generate-report:
@@ -136,18 +148,30 @@ jobs:
 
       - name: Upload to Google Drive
         run: |
-          set +e  # Don't exit on error
-          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
-            --create-empty-src-dirs --verbose --checkers=8 --stats=10s --no-update-modtime
-          rc=$?
-          if [[ $rc -ne 0 ]]; then
-            echo "⚠️ rclone exited with code $rc"
-            if grep -q "403: User rate limit exceeded" <<< "$(rclone copy ... 2>&1)"; then
-              echo "⚠️ Ignored 403: User rate limit exceeded"
+          set +e  # Allow script to continue even if rclone fails
+      
+          echo "📤 Start uploading via rclone..."
+          OUTPUT=$(rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
+            --create-empty-src-dirs \
+            --verbose \
+            --checkers=8 \
+            --stats=10s \
+            --no-update-modtime \
+            2>&1)
+          STATUS=$?
+      
+          echo "$OUTPUT"
+      
+          if [[ $STATUS -ne 0 ]]; then
+            if echo "$OUTPUT" | grep -q "403: User rate limit exceeded"; then
+              echo "⚠️ Rclone hit user rate limit (403), but continuing anyway."
               exit 0
             else
-              exit $rc
+              echo "❌ Rclone failed with non-recoverable error."
+              exit $STATUS
             fi
+          else
+            echo "✅ Rclone upload completed successfully."
           fi
 
   create_release:
