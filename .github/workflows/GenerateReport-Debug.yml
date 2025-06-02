@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - MonthlyReport
+      - Develop
     paths:
       - '**.py'
       - 'GenerateReport-Debug.yml'
@@ -25,7 +25,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: MonthlyReport
+          ref: Develop
 
       - name: Call setup-python
         id: setup-python
@@ -48,7 +48,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: MonthlyReport
+          ref: Develop
 
       - name: Call setup-python
         id: setup-python
