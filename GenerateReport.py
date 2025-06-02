@@ -23,6 +23,7 @@ from jinja2 import Environment, FileSystemLoader
 from utils.ConfigUtils import(
     get_report_paths,
     get_report_output_folder,
+    get_monthly_report_output_folder,
     load_base_packages,
     parse_requirements
 )
