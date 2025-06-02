@@ -7,3 +7,4 @@ python-dotenv
 pandas
 pipdeptree
 setuptools
+xlsxwriter
