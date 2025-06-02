@@ -4,14 +4,6 @@ on:
   schedule:
     - cron: '0 0 * * MON,THU'
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '**.py'
-      - '**.yml'
-      - '.env'
-      - 'src/**'
 
 permissions:
   contents: write

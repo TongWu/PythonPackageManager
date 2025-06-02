@@ -23,6 +23,7 @@ from jinja2 import Environment, FileSystemLoader
 from utils.ConfigUtils import(
     get_report_paths,
     get_report_output_folder,
+    get_monthly_report_output_folder,
     load_base_packages,
     parse_requirements
 )
@@ -84,6 +85,7 @@ def main() -> None:
     """
     paths = get_report_paths()
     report_dir = get_report_output_folder()
+    monthly_report_dir = get_monthly_report_output_folder()
 
     OUTPUT_CSV = paths["csv"]
     logger.debug(f"CSV Path: {OUTPUT_CSV}")
@@ -274,7 +276,55 @@ def main() -> None:
             logger.warning(f"⚠️ {len(failed_versions)} package versions failed vulnerability check. Saved to {OUTPUT_FAILED}.txt")
         except Exception as e:
             print(f"❌ Failed to write failed packages list: {e}")
-    
+
+    # Monthly Report
+    import pandas as pd
+    from datetime import datetime
+    monthly_df = pd.DataFrame(rows)[[
+        'Package Name', 'Package Type', 'Custodian', 'Current Version',
+        'Dependencies for Current', 'Newer Versions', 'Dependencies for Latest',
+        'Latest Version', 'Current Version Vulnerable?', 'Current Version Vulnerability Details',
+        'Upgrade Version Vulnerable?', 'Upgrade Vulnerability Details',
+        'Suggested Upgrade', 'Remarks'
+    ]]
+    # Overview Sheet
+    total_packages = len(monthly_df)
+    base_count = (monthly_df['Package Type'] == 'Base Package').sum()
+    dep_count = total_packages - base_count
+    custodian_summary = monthly_df.groupby(['Custodian', 'Package Type']).size().unstack(fill_value=0)
+    custodian_summary['Total'] = custodian_summary.sum(axis=1)
+    overview_df = pd.DataFrame({
+        "Metric": ["Total Packages", "Base Packages", "Dependency Packages"],
+        "Count": [total_packages, base_count, dep_count]
+    })
+    # Custodian Sheet
+    custodian_raw_df = pd.read_csv(CUSTODIAN_LIST)
+    custodian_map_rev = {
+        "1": decode_base64_env("CUSTODIAN_1"),
+        "2": decode_base64_env("CUSTODIAN_2")
+    }
+    custodian_raw_df['Custodian'] = custodian_raw_df['Custodian'].astype(str).map(custodian_map_rev)
+
+    now = datetime.now().strftime("%Y%m-%d-%H%M")
+    monthly_file_path = os.path.join(monthly_report_dir, f"MonthlyReport-{now}.xlsx")
+    YearMonth = datetime.now().strftime("%Y%m")
+
+    # Write to Monthly Report
+    try:
+        with pd.ExcelWriter(monthly_file_path, engine='xlsxwriter') as writer:
+            overview_df.to_excel(writer, sheet_name='Overview', index=False)
+            custodian_summary.reset_index().to_excel(writer, sheet_name='Overview', startrow=5, index=False)
+            custodian_raw_df.to_excel(writer, sheet_name='Custodian', index=False)
+            monthly_df.to_excel(writer, sheet_name=f'Monthly Report - {YearMonth}', index=False)
+            # Hide specific columns in Excel
+            worksheet = writer.sheets[f'Monthly Report - {YearMonth}']
+            col_indices = monthly_df.columns.get_indexer(['Dependencies for Current', 'Dependencies for Latest'])
+            for col_idx in col_indices:
+                worksheet.set_column(col_idx, col_idx, None, None, {'hidden': True})
+        print(f"\U0001F4C4 Monthly Excel report saved to {monthly_file_path}")
+    except Exception as e:
+        print(f"\u274C Failed to write monthly Excel report: {e}")
+
     # Summary logging
     total = len(rows)
     base_count = sum(1 for r in rows if r['Package Type'] == 'Base Package')
