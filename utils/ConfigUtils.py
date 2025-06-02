@@ -65,6 +65,25 @@ def get_report_output_folder(base: str = "WeeklyReport") -> str:
     os.makedirs(path, exist_ok=True)
     return path
 
+def get_monthly_report_output_folder(base: str = "MonthlyReport") -> str:
+    """
+    Create and return the output folder path for the current month's report.
+
+    This function computes the folder name based on the Monday of the current month,
+    creates the directory if it does not exist, and returns the path.
+
+    Args:
+        base (str): Base directory name for report folders. Default is "MonthlyReport".
+
+    Returns:
+        str: Full path to the output directory for the current month.
+    """
+    today = datetime.today()
+    folder_name = today.strftime("%Y-%m")
+    path = os.path.join(base, folder_name)
+    os.makedirs(path, exist_ok=True)
+    return path
+
 def load_base_packages() -> set:
     """
     Load base packages from either a CSV or a TXT file based on global setting.
