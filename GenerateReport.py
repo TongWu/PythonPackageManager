@@ -316,6 +316,11 @@ def main() -> None:
             custodian_summary.reset_index().to_excel(writer, sheet_name='Overview', startrow=5, index=False)
             custodian_raw_df.to_excel(writer, sheet_name='Custodian', index=False)
             monthly_df.to_excel(writer, sheet_name=f'Monthly Report - {YearMonth}', index=False)
+            # Hide specific columns in Excel
+            worksheet = writer.sheets[f'Monthly Report - {YearMonth}']
+            col_indices = monthly_df.columns.get_indexer(['Dependencies for Current', 'Dependencies for Latest'])
+            for col_idx in col_indices:
+                worksheet.set_column(col_idx, col_idx, None, None, {'hidden': True})
         print(f"\U0001F4C4 Monthly Excel report saved to {monthly_file_path}")
     except Exception as e:
         print(f"\u274C Failed to write monthly Excel report: {e}")
