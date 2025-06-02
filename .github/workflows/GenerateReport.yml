@@ -47,7 +47,19 @@ jobs:
 
       - name: Upload to Google Drive
         run: |
-          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ --create-empty-src-dirs --verbose --checkers=8 --stats=10s
+          set +e  # Don't exit on error
+          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
+            --create-empty-src-dirs --verbose --checkers=8 --stats=10s
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            echo "⚠️ rclone exited with code $rc"
+            if grep -q "403: User rate limit exceeded" <<< "$(rclone copy ... 2>&1)"; then
+              echo "⚠️ Ignored 403: User rate limit exceeded"
+              exit 0
+            else
+              exit $rc
+            fi
+          fi
 
   generate-report:
     name: Generate Weekly Report
@@ -124,7 +136,19 @@ jobs:
 
       - name: Upload to Google Drive
         run: |
-          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ --create-empty-src-dirs --verbose --checkers=8 --stats=10s
+          set +e  # Don't exit on error
+          rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
+            --create-empty-src-dirs --verbose --checkers=8 --stats=10s
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            echo "⚠️ rclone exited with code $rc"
+            if grep -q "403: User rate limit exceeded" <<< "$(rclone copy ... 2>&1)"; then
+              echo "⚠️ Ignored 403: User rate limit exceeded"
+              exit 0
+            else
+              exit $rc
+            fi
+          fi
 
   create_release:
     name: Create GitHub Release
@@ -225,15 +249,30 @@ jobs:
         run: |
           WEEK_PREFIX=$(echo "${{ env.RELEASE_TAG }}" | sed -E 's/^weekly-([0-9]{8}).*/\1/')
           echo "🧹 Will cleanup previous releases in the same week: $WEEK_PREFIX"
+          echo "🆕 Current release: ${{ env.RELEASE_TAG }}"
 
-          # List all weekly releases
-          gh release list --limit 100 --json tagName --jq '.[].tagName' | \
-            grep "^weekly-$WEEK_PREFIX" | \
-            grep -v "${{ env.RELEASE_TAG }}" | \
-            while read old_tag; do
-              echo "🗑️ Deleting old release and tag: $old_tag"
-              gh release delete "$old_tag" --yes || echo "⚠️ Failed to delete release $old_tag"
-              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$old_tag" || echo "⚠️ Failed to delete tag ref $old_tag"
+          MONDAY_11AM_EPOCH=$(date -d "$(date +%Y-%m-%d -d @$(( $(date +%s) - ($(date +%u) - 1) * 86400 ))) 11:00:00" +%s)
+          echo "🕒 Keep reports created before Monday 11AM epoch: $MONDAY_11AM_EPOCH"
+
+          gh release list --limit 100 --json tagName,createdAt | \
+            jq -c '.[] | select(.tagName | test("^weekly-'$WEEK_PREFIX'"))' | \
+            while read line; do
+              tag=$(echo "$line" | jq -r '.tagName')
+              created_at=$(echo "$line" | jq -r '.createdAt')
+              created_epoch=$(date -d "$created_at" +%s)
+
+              if [[ "$tag" == "${{ env.RELEASE_TAG }}" ]]; then
+                echo "⏭️ Skipping current release: $tag"
+                continue
+              fi
+
+              if (( created_epoch < MONDAY_11AM_EPOCH )); then
+                echo "✅ Keeping $tag (created before Monday 11AM)"
+              else
+                echo "🗑️ Deleting old release and tag: $tag"
+                gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
+                gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+              fi
             done
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
