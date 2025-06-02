@@ -7,7 +7,7 @@ on:
       - dev
     paths:
       - '**.py'
-      - 'GenerateReport-Debug.yml'
+      - '.github/workflows/GenerateReport-Debug.yml'
       - '.github/workflows/PythonSetup/**'
       - '.github/workflows/RcloneSetup/**'
       - '.env'

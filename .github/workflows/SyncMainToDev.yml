@@ -1,5 +1,8 @@
 name: Sync main to dev
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   # push:
