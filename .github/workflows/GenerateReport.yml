@@ -331,16 +331,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
-      - name: Upload Monthly Report
-        uses: actions/upload-release-asset@v1
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        with:
-          upload_url: ${{ steps.create_monthly_release.outputs.upload_url }}
-          asset_path: ${{ env.REPORT_FILE }}
-          asset_name: ${{ env.REPORT_NAME }}
-          asset_content_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-
       - name: Remove old releases for the same month
         run: |
           echo "🧹 Cleaning up other releases for the same month..."
