@@ -322,15 +322,6 @@ jobs:
           echo "REPORT_FILE=$latest_file" >> $GITHUB_ENV
           echo "REPORT_NAME=$filename" >> $GITHUB_ENV
 
-      - name: Create GitHub Release
-        run: |
-          gh release create "$RELEASE_TAG" \
-            "$REPORT_FILE#${REPORT_NAME}" \
-            --title "Monthly Report - $RELEASE_TAG" \
-            --notes "Automated monthly report"
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-
       - name: Remove old releases for the same month
         run: |
           echo "🧹 Cleaning up other releases for the same month..."
@@ -351,5 +342,14 @@ jobs:
               gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
               gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
             done
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "$REPORT_FILE#${REPORT_NAME}" \
+            --title "Monthly Report - $RELEASE_TAG" \
+            --notes "Automated monthly report"
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
