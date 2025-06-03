@@ -210,32 +210,50 @@ jobs:
             sed -E 's/\.json$//' | \
             sort -t '_' -k2 | \
             tail -n 1).json
-      
+
           if [[ -z "$latest_json" || ! -f "$latest_json" ]]; then
             echo "❌ No valid JSON report found."
             exit 1
           fi
-      
+
           base_name="${latest_json%.json}"
           csv_file="${base_name}.csv"
           html_file="${base_name}.html"
-      
+
           echo "📝 Latest base: $base_name"
           echo "📄 CSV:  $csv_file"
           echo "📄 HTML: $html_file"
           echo "📄 JSON: $latest_json"
-      
+
           echo "CSV_PATH=$csv_file" >> $GITHUB_ENV
           echo "HTML_PATH=$html_file" >> $GITHUB_ENV
           echo "JSON_PATH=$latest_json" >> $GITHUB_ENV
-      
+
           echo "CSV_FILENAME=$(basename "$csv_file")" >> $GITHUB_ENV
           echo "HTML_FILENAME=$(basename "$html_file")" >> $GITHUB_ENV
           echo "JSON_FILENAME=$(basename "$latest_json")" >> $GITHUB_ENV
-      
-          tag="weekly-$(basename "$base_name" | sed -E 's/^WeeklyReport_//')"
+
+          # 🗓️ Get the Monday of current week
+          MONDAY_DATE=$(date -d "$(date +%Y-%m-%d -d @$(( $(date +%s) - ($(date +%u) - 1) * 86400 )))" +%Y%m%d)
+          echo "📅 This week's Monday: $MONDAY_DATE"
+
+          # 🔍 Find existing tags in this week and determine Ver{x}
+          existing_tags=$(gh release list --limit 100 --json tagName | jq -r ".[] | .tagName" | grep -E "^weekly-${MONDAY_DATE}-Ver[0-9]+$" || true)
+          max_ver=$(echo "$existing_tags" | grep -oE 'Ver[0-9]+' | sed 's/Ver//' | sort -n | tail -n 1)
+
+          if [[ -z "$max_ver" ]]; then
+            new_ver=1
+          else
+            new_ver=$((max_ver + 1))
+          fi
+
+          tag="weekly-${MONDAY_DATE}-Ver${new_ver}"
+          echo "🆕 Release tag: $tag"
+
           echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
           echo "release_tag=$tag" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Create GitHub Release
         run: |
@@ -248,35 +266,43 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
-      - name: Remove old release in same week
+      - name: Remove old releases from last week (keep Ver1 and latest)
         run: |
-          WEEK_PREFIX=$(echo "${{ env.RELEASE_TAG }}" | sed -E 's/^weekly-([0-9]{8}).*/\1/')
-          echo "🧹 Will cleanup previous releases in the same week: $WEEK_PREFIX"
-          echo "🆕 Current release: ${{ env.RELEASE_TAG }}"
+          # ⏱️ Calculate last Monday date
+          LAST_MONDAY=$(date -d "last monday" +%Y%m%d)
+          echo "🧹 Cleaning up releases from last week: $LAST_MONDAY"
 
-          MONDAY_11AM_EPOCH=$(date -d "$(date +%Y-%m-%d -d @$(( $(date +%s) - ($(date +%u) - 1) * 86400 ))) 11:00:00" +%s)
-          echo "🕒 Keep reports created before Monday 11AM epoch: $MONDAY_11AM_EPOCH"
+          # 🔍 Find all tags that fits weekly-LAST_MONDAY-Ver{X}
+          matching_tags=$(gh release list --limit 100 --json tagName,createdAt | \
+            jq -r ".[] | select(.tagName | test(\"^weekly-${LAST_MONDAY}-Ver[0-9]+\")).tagName")
 
-          gh release list --limit 100 --json tagName,createdAt | \
-            jq -c '.[] | select(.tagName | test("^weekly-'$WEEK_PREFIX'"))' | \
-            while read line; do
-              tag=$(echo "$line" | jq -r '.tagName')
-              created_at=$(echo "$line" | jq -r '.createdAt')
-              created_epoch=$(date -d "$created_at" +%s)
+          if [[ -z "$matching_tags" ]]; then
+            echo "ℹ️ No matching tags found for last week."
+            exit 0
+          fi
 
-              if [[ "$tag" == "${{ env.RELEASE_TAG }}" ]]; then
-                echo "⏭️ Skipping current release: $tag"
-                continue
-              fi
+          echo "🔍 All matching tags:"
+          echo "$matching_tags"
 
-              if (( created_epoch < MONDAY_11AM_EPOCH )); then
-                echo "✅ Keeping $tag (created before Monday 11AM)"
-              else
-                echo "🗑️ Deleting old release and tag: $tag"
-                gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
-                gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
-              fi
-            done
+          # Extract all tags
+          versions=$(echo "$matching_tags" | sed -nE "s/^weekly-${LAST_MONDAY}-Ver([0-9]+)$/\1/p" | sort -n)
+
+          # Get biggest ver
+          max_ver=$(echo "$versions" | tail -n 1)
+          echo "🆕 Max version: Ver$max_ver"
+
+          for tag in $matching_tags; do
+            ver=$(echo "$tag" | sed -nE "s/^weekly-${LAST_MONDAY}-Ver([0-9]+)$/\1/p")
+
+            if [[ "$ver" == "1" || "$ver" == "$max_ver" ]]; then
+              echo "✅ Keeping $tag"
+              continue
+            fi
+
+            echo "🗑️ Deleting $tag"
+            gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
+            gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+          done
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
