@@ -4,6 +4,19 @@ on:
   schedule:
     - cron: '0 0 * * MON,THU'
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.py'
+      - '.github/workflows/GenerateReport.yml'
+      - '.github/workflows/PythonSetup/**'
+      - '.github/workflows/RcloneSetup/**'
+      - '.env'
+      - 'src/**'
+      - 'requirements.txt'
+      - 'templates/**'
+      - 'utils/**'
 
 permissions:
   contents: write
@@ -39,7 +52,7 @@ jobs:
 
   generate-report:
     name: Generate Weekly Report
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: healthcheck
     environment: WT_WeeklyTriggerEnv
     steps:
