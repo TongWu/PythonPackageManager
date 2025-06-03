@@ -312,15 +312,30 @@ jobs:
 
           echo "✅ Found: $latest_file"
 
-          # Derive release tag
           filename=$(basename "$latest_file")
           year_month=$(echo "$filename" | grep -oP '(?<=MonthlyReport-)[0-9]{6}')
 
-          tag="monthly-${year_month}"
+          echo "📦 Scanning existing monthly tags with prefix: monthly-${year_month}-Ver"
+
+          existing_tags=$(gh release list --limit 100 --json tagName | jq -r ".[] | .tagName" | grep -E "^monthly-${year_month}-Ver[0-9]+$" || true)
+
+          max_ver=$(echo "$existing_tags" | grep -oE 'Ver[0-9]+' | sed 's/Ver//' | sort -n | tail -n 1)
+
+          if [[ -z "$max_ver" ]]; then
+            new_ver=1
+          else
+            new_ver=$((max_ver + 1))
+          fi
+
+          tag="monthly-${year_month}-Ver${new_ver}"
+          echo "🆕 New tag: $tag"
 
           echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
           echo "REPORT_FILE=$latest_file" >> $GITHUB_ENV
           echo "REPORT_NAME=$filename" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
 
       - name: Remove old releases for the same month
         run: |
