@@ -128,6 +128,28 @@ jobs:
           git push origin HEAD:${{ github.ref_name }} || {
             echo "❌ Push failed. Someone else may have pushed changes. Please re-run the workflow."
             exit 1
+          }          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add WeeklyReport/* || true
+          git commit -m "📝 Update WeeklyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in WeeklyReport"
+
+          git add MonthlyReport/* || true
+          git commit -m "📊 Update MonthlyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in MonthlyReport"
+
+          git add src/BasePackageWithDependencies.csv || true
+          git commit -m "📦 Update BasePackageWithDependencies on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in BasePackageWithDependencies"
+
+          # Pull remote changes before pushing to avoid non-fast-forward errors
+          git fetch origin ${{ github.ref_name }}
+          git rebase origin/${{ github.ref_name }} || {
+            echo "❌ Rebase failed due to conflict. Please resolve manually."
+            exit 1
+          }
+
+          git push origin HEAD:${{ github.ref_name }} || {
+            echo "❌ Push failed. Someone else may have pushed changes. Please re-run the workflow."
+            exit 1
           }
 
   upload-report:
@@ -151,12 +173,40 @@ jobs:
       - name: DEBUG - Check rclone connection
         run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
 
-      - name: Upload to Google Drive
+      - name: Upload Weekly Report to Google Drive
         run: |
           set +e  # Allow script to continue even if rclone fails
       
           echo "📤 Start uploading via rclone..."
           OUTPUT=$(rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
+            --create-empty-src-dirs \
+            --verbose \
+            --checkers=8 \
+            --stats=10s \
+            --no-update-modtime \
+            2>&1)
+          STATUS=$?
+      
+          echo "$OUTPUT"
+      
+          if [[ $STATUS -ne 0 ]]; then
+            if echo "$OUTPUT" | grep -q "403: User rate limit exceeded"; then
+              echo "⚠️ Rclone hit user rate limit (403), but continuing anyway."
+              exit 0
+            else
+              echo "❌ Rclone failed with non-recoverable error."
+              exit $STATUS
+            fi
+          else
+            echo "✅ Rclone upload completed successfully."
+          fi
+
+      - name: Upload Monthly Report to Google Drive
+        run: |
+          set +e  # Allow script to continue even if rclone fails
+      
+          echo "📤 Start uploading via rclone..."
+          OUTPUT=$(rclone copy MonthlyReport gdrive:/Geek/PythonPackageManager/MonthlyReports/ \
             --create-empty-src-dirs \
             --verbose \
             --checkers=8 \
