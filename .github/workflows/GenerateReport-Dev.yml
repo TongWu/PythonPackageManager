@@ -1,4 +1,4 @@
-name: Generate Report (Debug)
+name: Generate Report (Dev)
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       - dev
     paths:
       - '**.py'
-      - '.github/workflows/GenerateReport-Debug.yml'
+      - '.github/workflows/GenerateReport-Dev.yml'
       - '.github/workflows/PythonSetup/**'
       - '.github/workflows/RcloneSetup/**'
       - '.env'
@@ -22,7 +22,7 @@ permissions:
 jobs:
   healthcheck:
     name: Health Check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: WT_WeeklyTriggerEnv
     steps:
       - name: Checkout repository
@@ -44,7 +44,7 @@ jobs:
 
   generate-report:
     name: Generate Weekly Report
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: healthcheck
     environment: WT_WeeklyTriggerEnv
     steps:
