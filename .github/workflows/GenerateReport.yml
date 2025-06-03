@@ -224,20 +224,20 @@ jobs:
           echo "release_tag=$tag" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "$CSV_PATH#${CSV_FILENAME}" \
+            "$HTML_PATH#${HTML_FILENAME}" \
+            "$JSON_PATH#${JSON_FILENAME}" \
+            --title "Weekly Report - $RELEASE_TAG" \
+            --notes "Automated weekly report"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          release_name: "Weekly Report - ${{ env.RELEASE_TAG }}"
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Upload CSV Report
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.CSV_PATH }}
@@ -247,7 +247,7 @@ jobs:
       - name: Upload HTML Report
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.HTML_PATH }}
@@ -257,7 +257,7 @@ jobs:
       - name: Upload JSON Report
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ${{ env.JSON_PATH }}
@@ -336,21 +336,19 @@ jobs:
           echo "REPORT_FILE=$latest_file" >> $GITHUB_ENV
           echo "REPORT_NAME=$filename" >> $GITHUB_ENV
 
-      - name: Create GitHub Monthly Release
-        id: create_monthly_release
-        uses: actions/create-release@v1
+      - name: Create GitHub Release
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "$REPORT_FILE#${REPORT_NAME}" \
+            --title "Monthly Report - $RELEASE_TAG" \
+            --notes "Automated monthly report"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          release_name: "Monthly Report - ${{ env.RELEASE_TAG }}"
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Upload Monthly Report
         uses: actions/upload-release-asset@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         with:
           upload_url: ${{ steps.create_monthly_release.outputs.upload_url }}
           asset_path: ${{ env.REPORT_FILE }}
