@@ -40,14 +40,6 @@ jobs:
       - name: DEBUG - Print config.env
         run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
 
-      - name: Set up rclone
-        uses: ./.github/workflows/RcloneSetup
-        with:
-          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
-
-      - name: DEBUG - Check rclone connection
-        run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
-
   generate-report:
     name: Generate Weekly Report
     runs-on: self-hosted
@@ -102,80 +94,4 @@ jobs:
             echo "❌ Push failed. Someone else may have pushed changes. Please re-run the workflow."
             exit 1
           }
-
-  upload-report:
-    name: Upload to Google Drive
-    runs-on: self-hosted
-    environment: WT_WeeklyTriggerEnv
-    needs: generate-report
-    steps:
-      - name: Checkout latest commit from main
-        run: |
-          git init
-          git remote add origin https://github.com/${{ github.repository }}
-          git fetch origin main
-          git checkout origin/main
-
-      - name: Set up rclone
-        uses: ./.github/workflows/RcloneSetup
-        with:
-          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
-
-      - name: DEBUG - Check rclone connection
-        run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
-
-      - name: Upload Weekly Report to Google Drive
-        run: |
-          set +e  # Allow script to continue even if rclone fails
-      
-          echo "📤 Start uploading via rclone..."
-          OUTPUT=$(rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
-            --create-empty-src-dirs \
-            --verbose \
-            --checkers=8 \
-            --stats=10s \
-            --no-update-modtime \
-            2>&1)
-          STATUS=$?
-      
-          echo "$OUTPUT"
-      
-          if [[ $STATUS -ne 0 ]]; then
-            if echo "$OUTPUT" | grep -q "403: User rate limit exceeded"; then
-              echo "⚠️ Rclone hit user rate limit (403), but continuing anyway."
-              exit 0
-            else
-              echo "❌ Rclone failed with non-recoverable error."
-              exit $STATUS
-            fi
-          else
-            echo "✅ Rclone upload completed successfully."
-          fi
-
-      - name: Upload Monthly Report to Google Drive
-        run: |
-          set +e  # Allow script to continue even if rclone fails
-      
-          echo "📤 Start uploading via rclone..."
-          OUTPUT=$(rclone copy MonthlyReport gdrive:/Geek/PythonPackageManager/MonthlyReports/ \
-            --create-empty-src-dirs \
-            --verbose \
-            --checkers=8 \
-            --stats=10s \
-            --no-update-modtime \
-            2>&1)
-          STATUS=$?
-      
-          echo "$OUTPUT"
-      
-          if [[ $STATUS -ne 0 ]]; then
-            if echo "$OUTPUT" | grep -q "403: User rate limit exceeded"; then
-              echo "⚠️ Rclone hit user rate limit (403), but continuing anyway."
-              exit 0
-            else
-              echo "❌ Rclone failed with non-recoverable error."
-              exit $STATUS
-            fi
-          else
-            echo "✅ Rclone upload completed successfully."
-          fi
+          
