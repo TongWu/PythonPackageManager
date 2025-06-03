@@ -248,36 +248,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
-      - name: Upload CSV Report
-        uses: actions/upload-release-asset@v1
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.CSV_PATH }}
-          asset_name: ${{ env.CSV_FILENAME }}
-          asset_content_type: text/csv
-      
-      - name: Upload HTML Report
-        uses: actions/upload-release-asset@v1
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.HTML_PATH }}
-          asset_name: ${{ env.HTML_FILENAME }}
-          asset_content_type: text/html
-      
-      - name: Upload JSON Report
-        uses: actions/upload-release-asset@v1
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.JSON_PATH }}
-          asset_name: ${{ env.JSON_FILENAME }}
-          asset_content_type: application/json
-
       - name: Remove old release in same week
         run: |
           WEEK_PREFIX=$(echo "${{ env.RELEASE_TAG }}" | sed -E 's/^weekly-([0-9]{8}).*/\1/')
@@ -344,7 +314,8 @@ jobs:
 
           # Derive release tag
           filename=$(basename "$latest_file")
-          year_month=$(echo "$filename" | grep -oP '(?<=MonthlyReport-)[0-9]{4}-[0-9]{2}' | tr -d '-')
+          year_month=$(echo "$filename" | grep -oP '(?<=MonthlyReport-)[0-9]{6}')
+
           tag="monthly-${year_month}"
 
           echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
