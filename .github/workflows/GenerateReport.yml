@@ -115,25 +115,6 @@ jobs:
           git add WeeklyReport/* || true
           git commit -m "📝 Update WeeklyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in WeeklyReport"
 
-          git add src/BasePackageWithDependencies.csv || true
-          git commit -m "📦 Update BasePackageWithDependencies on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in BasePackageWithDependencies"
-
-          # Pull remote changes before pushing to avoid non-fast-forward errors
-          git fetch origin ${{ github.ref_name }}
-          git rebase origin/${{ github.ref_name }} || {
-            echo "❌ Rebase failed due to conflict. Please resolve manually."
-            exit 1
-          }
-
-          git push origin HEAD:${{ github.ref_name }} || {
-            echo "❌ Push failed. Someone else may have pushed changes. Please re-run the workflow."
-            exit 1
-          }          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add WeeklyReport/* || true
-          git commit -m "📝 Update WeeklyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in WeeklyReport"
-
           git add MonthlyReport/* || true
           git commit -m "📊 Update MonthlyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in MonthlyReport"
 
