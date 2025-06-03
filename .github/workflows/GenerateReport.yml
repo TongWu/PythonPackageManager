@@ -4,19 +4,6 @@ on:
   schedule:
     - cron: '0 0 * * MON,THU'
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '**.py'
-      - '.github/workflows/GenerateReport.yml'
-      - '.github/workflows/PythonSetup/**'
-      - '.github/workflows/RcloneSetup/**'
-      - '.env'
-      - 'src/**'
-      - 'requirements.txt'
-      - 'templates/**'
-      - 'utils/**'
 
 permissions:
   contents: write
