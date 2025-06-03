@@ -185,6 +185,7 @@ jobs:
   create-weekly-release:
     name: Create Weekly Report Release
     runs-on: ubuntu-latest
+    environment: WT_WeeklyTriggerEnv
     needs: generate-report
     if: success()
 
@@ -307,11 +308,12 @@ jobs:
               fi
             done
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
   create-monthly-release:
     name: Create Monthly Report Release
     runs-on: ubuntu-latest
+    environment: WT_WeeklyTriggerEnv
     needs: generate-report
     if: success()
     steps:
@@ -389,4 +391,4 @@ jobs:
               gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
             done
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
