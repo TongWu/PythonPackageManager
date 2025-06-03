@@ -1,0 +1,394 @@
+name: Generate Report (Self Hosted)
+
+on:
+  schedule:
+    - cron: '0 0 * * MON,THU'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.py'
+      - '.github/workflows/GenerateReport-SelfHosted.yml'
+      - '.github/workflows/PythonSetup/**'
+      - '.github/workflows/RcloneSetup/**'
+      - '.env'
+      - 'src/**'
+      - 'requirements.txt'
+      - 'templates/**'
+      - 'utils/**'
+
+permissions:
+  contents: write
+
+jobs:
+  healthcheck:
+    name: Health Check
+    runs-on: self-hosted
+    environment: WT_WeeklyTriggerEnv
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Call setup-python
+        id: setup-python
+        uses: ./.github/workflows/PythonSetup
+
+      - name: DEBUG - Check pip health
+        run: |
+          pip --version
+          python -c "import pip._vendor.resolvelib; print(pip._vendor.resolvelib.__file__)"
+
+      - name: DEBUG - Print config.env
+        run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
+
+      - name: Set up rclone
+        uses: ./.github/workflows/RcloneSetup
+        with:
+          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
+
+      - name: DEBUG - Check rclone connection
+        run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
+
+  generate-report:
+    name: Generate Weekly Report
+    runs-on: self-hosted
+    needs: healthcheck
+    environment: WT_WeeklyTriggerEnv
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Call setup-python
+        id: setup-python
+        uses: ./.github/workflows/PythonSetup
+
+      - name: DEBUG - Check pip health
+        run: |
+          pip --version
+          python -c "import pip._vendor.resolvelib; print(pip._vendor.resolvelib.__file__)"
+
+      - name: DEBUG - Print config.env
+        run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
+
+      - name: Run weekly report script
+        run: python GenerateReport.py
+
+      - name: DEBUG - Show changed files
+        run: |
+          git status
+          git diff --name-only
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add WeeklyReport/* || true
+          git commit -m "📝 Update WeeklyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in WeeklyReport"
+
+          git add MonthlyReport/* || true
+          git commit -m "📊 Update MonthlyReport on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in MonthlyReport"
+
+          git add src/BasePackageWithDependencies.csv || true
+          git commit -m "📦 Update BasePackageWithDependencies on $(date '+%Y-%m-%d %H:%M')" || echo "No changes in BasePackageWithDependencies"
+
+          # Pull remote changes before pushing to avoid non-fast-forward errors
+          git fetch origin ${{ github.ref_name }}
+          git rebase origin/${{ github.ref_name }} || {
+            echo "❌ Rebase failed due to conflict. Please resolve manually."
+            exit 1
+          }
+
+          git push origin HEAD:${{ github.ref_name }} || {
+            echo "❌ Push failed. Someone else may have pushed changes. Please re-run the workflow."
+            exit 1
+          }
+
+  upload-report:
+    name: Upload to Google Drive
+    runs-on: self-hosted
+    environment: WT_WeeklyTriggerEnv
+    needs: generate-report
+    steps:
+      - name: Checkout latest commit from main
+        run: |
+          git init
+          git remote add origin https://github.com/${{ github.repository }}
+          git fetch origin main
+          git checkout origin/main
+
+      - name: Set up rclone
+        uses: ./.github/workflows/RcloneSetup
+        with:
+          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
+
+      - name: DEBUG - Check rclone connection
+        run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
+
+      - name: Upload Weekly Report to Google Drive
+        run: |
+          set +e  # Allow script to continue even if rclone fails
+      
+          echo "📤 Start uploading via rclone..."
+          OUTPUT=$(rclone copy WeeklyReport gdrive:/Geek/PythonPackageManager/WeeklyReports/ \
+            --create-empty-src-dirs \
+            --verbose \
+            --checkers=8 \
+            --stats=10s \
+            --no-update-modtime \
+            2>&1)
+          STATUS=$?
+      
+          echo "$OUTPUT"
+      
+          if [[ $STATUS -ne 0 ]]; then
+            if echo "$OUTPUT" | grep -q "403: User rate limit exceeded"; then
+              echo "⚠️ Rclone hit user rate limit (403), but continuing anyway."
+              exit 0
+            else
+              echo "❌ Rclone failed with non-recoverable error."
+              exit $STATUS
+            fi
+          else
+            echo "✅ Rclone upload completed successfully."
+          fi
+
+      - name: Upload Monthly Report to Google Drive
+        run: |
+          set +e  # Allow script to continue even if rclone fails
+      
+          echo "📤 Start uploading via rclone..."
+          OUTPUT=$(rclone copy MonthlyReport gdrive:/Geek/PythonPackageManager/MonthlyReports/ \
+            --create-empty-src-dirs \
+            --verbose \
+            --checkers=8 \
+            --stats=10s \
+            --no-update-modtime \
+            2>&1)
+          STATUS=$?
+      
+          echo "$OUTPUT"
+      
+          if [[ $STATUS -ne 0 ]]; then
+            if echo "$OUTPUT" | grep -q "403: User rate limit exceeded"; then
+              echo "⚠️ Rclone hit user rate limit (403), but continuing anyway."
+              exit 0
+            else
+              echo "❌ Rclone failed with non-recoverable error."
+              exit $STATUS
+            fi
+          else
+            echo "✅ Rclone upload completed successfully."
+          fi
+
+  create-weekly-release:
+    name: Create Weekly Report Release
+    runs-on: self-hosted
+    needs: generate-report
+    if: success()
+
+    steps:
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Checkout latest commit from main
+        run: |
+          git init
+          git remote add origin https://github.com/${{ github.repository }}
+          git fetch origin main
+          git checkout origin/main
+
+      - name: Find latest report set
+        id: find_latest
+        run: |
+          echo "📁 Scanning for latest report set..."
+          latest_json=$(find WeeklyReport -type f -name "WeeklyReport_*.json" | \
+            sed -E 's/\.json$//' | \
+            sort -t '_' -k2 | \
+            tail -n 1).json
+      
+          if [[ -z "$latest_json" || ! -f "$latest_json" ]]; then
+            echo "❌ No valid JSON report found."
+            exit 1
+          fi
+      
+          base_name="${latest_json%.json}"
+          csv_file="${base_name}.csv"
+          html_file="${base_name}.html"
+      
+          echo "📝 Latest base: $base_name"
+          echo "📄 CSV:  $csv_file"
+          echo "📄 HTML: $html_file"
+          echo "📄 JSON: $latest_json"
+      
+          echo "CSV_PATH=$csv_file" >> $GITHUB_ENV
+          echo "HTML_PATH=$html_file" >> $GITHUB_ENV
+          echo "JSON_PATH=$latest_json" >> $GITHUB_ENV
+      
+          echo "CSV_FILENAME=$(basename "$csv_file")" >> $GITHUB_ENV
+          echo "HTML_FILENAME=$(basename "$html_file")" >> $GITHUB_ENV
+          echo "JSON_FILENAME=$(basename "$latest_json")" >> $GITHUB_ENV
+      
+          tag="weekly-$(basename "$base_name" | sed -E 's/^WeeklyReport_//')"
+          echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
+          echo "release_tag=$tag" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          release_name: "Weekly Report - ${{ env.RELEASE_TAG }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload CSV Report
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.CSV_PATH }}
+          asset_name: ${{ env.CSV_FILENAME }}
+          asset_content_type: text/csv
+      
+      - name: Upload HTML Report
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.HTML_PATH }}
+          asset_name: ${{ env.HTML_FILENAME }}
+          asset_content_type: text/html
+      
+      - name: Upload JSON Report
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ env.JSON_PATH }}
+          asset_name: ${{ env.JSON_FILENAME }}
+          asset_content_type: application/json
+
+      - name: Remove old release in same week
+        run: |
+          WEEK_PREFIX=$(echo "${{ env.RELEASE_TAG }}" | sed -E 's/^weekly-([0-9]{8}).*/\1/')
+          echo "🧹 Will cleanup previous releases in the same week: $WEEK_PREFIX"
+          echo "🆕 Current release: ${{ env.RELEASE_TAG }}"
+
+          MONDAY_11AM_EPOCH=$(date -d "$(date +%Y-%m-%d -d @$(( $(date +%s) - ($(date +%u) - 1) * 86400 ))) 11:00:00" +%s)
+          echo "🕒 Keep reports created before Monday 11AM epoch: $MONDAY_11AM_EPOCH"
+
+          gh release list --limit 100 --json tagName,createdAt | \
+            jq -c '.[] | select(.tagName | test("^weekly-'$WEEK_PREFIX'"))' | \
+            while read line; do
+              tag=$(echo "$line" | jq -r '.tagName')
+              created_at=$(echo "$line" | jq -r '.createdAt')
+              created_epoch=$(date -d "$created_at" +%s)
+
+              if [[ "$tag" == "${{ env.RELEASE_TAG }}" ]]; then
+                echo "⏭️ Skipping current release: $tag"
+                continue
+              fi
+
+              if (( created_epoch < MONDAY_11AM_EPOCH )); then
+                echo "✅ Keeping $tag (created before Monday 11AM)"
+              else
+                echo "🗑️ Deleting old release and tag: $tag"
+                gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
+                gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+              fi
+            done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-monthly-release:
+    name: Create Monthly Report Release
+    runs-on: self-hosted
+    needs: generate-report
+    if: success()
+    steps:
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh jq
+
+      - name: Checkout latest commit from main
+        run: |
+          git init
+          git remote add origin https://github.com/${{ github.repository }}
+          git fetch origin main
+          git checkout origin/main
+
+      - name: Find latest monthly report
+        id: find_latest_monthly
+        run: |
+          echo "🔍 Scanning for latest MonthlyReport..."
+          latest_file=$(find MonthlyReport -type f -name "MonthlyReport-*.xlsx" | sort | tail -n 1)
+
+          if [[ -z "$latest_file" || ! -f "$latest_file" ]]; then
+            echo "❌ No monthly report found."
+            exit 1
+          fi
+
+          echo "✅ Found: $latest_file"
+
+          # Derive release tag
+          filename=$(basename "$latest_file")
+          year_month=$(echo "$filename" | grep -oP '(?<=MonthlyReport-)[0-9]{4}-[0-9]{2}' | tr -d '-')
+          tag="monthly-${year_month}"
+
+          echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
+          echo "REPORT_FILE=$latest_file" >> $GITHUB_ENV
+          echo "REPORT_NAME=$filename" >> $GITHUB_ENV
+
+      - name: Create GitHub Monthly Release
+        id: create_monthly_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          release_name: "Monthly Report - ${{ env.RELEASE_TAG }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload Monthly Report
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_monthly_release.outputs.upload_url }}
+          asset_path: ${{ env.REPORT_FILE }}
+          asset_name: ${{ env.REPORT_NAME }}
+          asset_content_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+      - name: Remove old releases for the same month
+        run: |
+          echo "🧹 Cleaning up other releases for the same month..."
+
+          current_month_prefix=$(echo "${{ env.RELEASE_TAG }}" | grep -oP 'monthly-\K[0-9]{6}')
+
+          gh release list --limit 100 --json tagName,createdAt | \
+            jq -c '.[] | select(.tagName | test("^monthly-'$current_month_prefix'$"))' | \
+            while read line; do
+              tag=$(echo "$line" | jq -r '.tagName')
+
+              if [[ "$tag" == "${{ env.RELEASE_TAG }}" ]]; then
+                echo "⏭️ Skipping current release: $tag"
+                continue
+              fi
+
+              echo "🗑️ Deleting other release from the same month: $tag"
+              gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
+              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+            done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
