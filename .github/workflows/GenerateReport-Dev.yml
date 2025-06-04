@@ -1,4 +1,4 @@
-name: Generate Report
+name: Generate Report (Dev)
 
 on:
   schedule:
