@@ -361,7 +361,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
-      - name: Remove old releases from last week (keep Ver1 and latest)
+      - name: Remove old releases from last week
         run: |
           # ⏱️ Calculate last week's Monday date (7 days ago to get the right week even if today is Monday)
           LAST_MONDAY=$(date -d "last monday -7 days" +%Y%m%d)
