@@ -363,44 +363,44 @@ jobs:
 
       - name: Remove old releases from last week (keep Ver1 and latest)
         run: |
-          # ⏱️ Calculate last Monday date
-          LAST_MONDAY=$(date -d "last monday" +%Y%m%d)
+          # ⏱️ Calculate last week's Monday date (7 days ago to get the right week even if today is Monday)
+          LAST_MONDAY=$(date -d "last monday -7 days" +%Y%m%d)
           echo "🧹 Cleaning up releases from last week: $LAST_MONDAY"
 
-          # 🔍 Find all tags that fits weekly-LAST_MONDAY-Ver{X}
-          matching_tags=$(gh release list --limit 100 --json tagName,createdAt | \
-            jq -r ".[] | select(.tagName | test(\"^weekly-${LAST_MONDAY}-Ver[0-9]+\")).tagName")
+          # 🔍 Find all tags that match weekly-LAST_MONDAY-Ver{X}
+          matching_tags=$(gh release list --limit 100 --json tagName | \
+            jq -r ".[] | select(.tagName | test(\"^weekly-${LAST_MONDAY}-Ver[0-9]+$\")) | .tagName")
 
           if [[ -z "$matching_tags" ]]; then
             echo "ℹ️ No matching tags found for last week."
             exit 0
           fi
 
-          echo "🔍 All matching tags:"
+          echo "🔍 Found matching tags:"
           echo "$matching_tags"
 
-          # Extract all tags
+          # 🧮 Extract all version numbers
           versions=$(echo "$matching_tags" | sed -nE "s/^weekly-${LAST_MONDAY}-Ver([0-9]+)$/\1/p" | sort -n)
-
-          # Get biggest ver
           max_ver=$(echo "$versions" | tail -n 1)
-          echo "🆕 Max version: Ver$max_ver"
+          echo "🆕 Latest version: Ver$max_ver"
 
+          # 🧹 Delete all except Ver${max_ver}
           for tag in $matching_tags; do
             ver=$(echo "$tag" | sed -nE "s/^weekly-${LAST_MONDAY}-Ver([0-9]+)$/\1/p")
 
-            if [[ "$ver" == "1" || "$ver" == "$max_ver" ]]; then
-              echo "✅ Keeping $tag"
+            if [[ "$ver" == "$max_ver" ]]; then
+              echo "✅ Keeping latest tag: $tag"
               continue
             fi
 
-            echo "🗑️ Deleting $tag"
+            echo "🗑️ Deleting outdated tag: $tag"
             gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
-            if git ls-remote --tags origin | grep -q "refs/tags/$tag$"; then
-              echo "🔖 Tag $tag exists. Deleting..."
-              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+
+            if gh api repos/${{ github.repository }}/git/refs/tags/"$tag" > /dev/null 2>&1; then
+              echo "🔖 Deleting tag ref: $tag"
+              gh api -X DELETE repos/${{ github.repository }}/git/refs/tags/"$tag" || echo "⚠️ Failed to delete tag ref $tag"
             else
-              echo "ℹ️ Tag $tag does not exist. Skipping tag deletion."
+              echo "ℹ️ Tag ref $tag already deleted."
             fi
           done
         env:
