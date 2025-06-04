@@ -367,6 +367,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
+      - name: Create GitHub Release
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "$REPORT_FILE#${REPORT_NAME}" \
+            --title "Monthly Report - $RELEASE_TAG" \
+            --notes "Automated monthly report"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Remove old releases for the same month
         run: |
@@ -393,14 +401,5 @@ jobs:
                 echo "ℹ️ Tag $tag does not exist. Skipping tag deletion."
               fi  
             done
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-
-      - name: Create GitHub Release
-        run: |
-          gh release create "$RELEASE_TAG" \
-            "$REPORT_FILE#${REPORT_NAME}" \
-            --title "Monthly Report - $RELEASE_TAG" \
-            --notes "Automated monthly report"
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
