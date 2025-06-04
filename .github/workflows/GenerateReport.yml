@@ -182,11 +182,106 @@ jobs:
             echo "✅ Rclone upload completed successfully."
           fi
 
+  create-monthly-release:
+    name: Create Monthly Report Release
+    runs-on: ubuntu-latest
+    environment: WT_WeeklyTriggerEnv
+    needs: generate-report
+    if: success()
+    steps:
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh jq
+
+      - name: Checkout latest commit from main
+        run: |
+          git init
+          git remote add origin https://github.com/${{ github.repository }}
+          git fetch origin main
+          git checkout origin/main
+
+      - name: Find latest monthly report
+        id: find_latest_monthly
+        run: |
+          echo "🔍 Scanning for latest MonthlyReport..."
+          latest_file=$(find MonthlyReport -type f -name "MonthlyReport-*.xlsx" | sort | tail -n 1)
+
+          if [[ -z "$latest_file" || ! -f "$latest_file" ]]; then
+            echo "❌ No monthly report found."
+            exit 1
+          fi
+
+          echo "✅ Found: $latest_file"
+
+          filename=$(basename "$latest_file")
+          year_month=$(echo "$filename" | grep -oP '(?<=MonthlyReport-)[0-9]{6}')
+
+          echo "📦 Scanning existing monthly tags with prefix: monthly-${year_month}-Ver"
+
+          existing_tags=$(gh release list --limit 100 --json tagName | jq -r ".[] | .tagName" | grep -E "^monthly-${year_month}-Ver[0-9]+$" || true)
+
+          max_ver=$(echo "$existing_tags" | grep -oE 'Ver[0-9]+' | sed 's/Ver//' | sort -n | tail -n 1)
+
+          if [[ -z "$max_ver" ]]; then
+            new_ver=1
+          else
+            new_ver=$((max_ver + 1))
+          fi
+
+          tag="monthly-${year_month}-Ver${new_ver}"
+          echo "🆕 New tag: $tag"
+
+          echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
+          echo "REPORT_FILE=$latest_file" >> $GITHUB_ENV
+          echo "REPORT_NAME=$filename" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "$REPORT_FILE#${REPORT_NAME}" \
+            --title "Monthly Report - $RELEASE_TAG" \
+            --notes "Automated monthly report"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Remove old releases for the same month
+        run: |
+          echo "🧹 Cleaning up other releases for the same month..."
+
+          current_month_prefix=$(echo "${{ env.RELEASE_TAG }}" | grep -oP 'monthly-\K[0-9]{6}')
+
+          gh release list --limit 100 --json tagName | \
+            jq -r '.[] | .tagName' | \
+            grep -E "^monthly-${current_month_prefix}-Ver[0-9]+$" | \
+            while read tag; do
+              if [[ "$tag" == "${{ env.RELEASE_TAG }}" ]]; then
+                echo "⏭️ Skipping current release: $tag"
+                continue
+              fi
+
+              echo "🗑️ Deleting old release: $tag"
+              gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
+
+              echo "🔍 Checking for tag ref: $tag"
+              if gh api repos/${{ github.repository }}/git/refs/tags/"$tag" > /dev/null 2>&1; then
+                echo "🔖 Tag $tag exists. Deleting..."
+                gh api -X DELETE repos/${{ github.repository }}/git/refs/tags/"$tag" || echo "⚠️ Failed to delete tag ref $tag"
+              else
+                echo "ℹ️ Tag $tag does not exist or already deleted."
+              fi
+            done
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+
   create-weekly-release:
     name: Create Weekly Report Release
     runs-on: ubuntu-latest
     environment: WT_WeeklyTriggerEnv
-    needs: generate-report
+    needs: create-monthly-release
     if: success()
 
     steps:
@@ -308,98 +403,5 @@ jobs:
               echo "ℹ️ Tag $tag does not exist. Skipping tag deletion."
             fi
           done
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-
-  create-monthly-release:
-    name: Create Monthly Report Release
-    runs-on: ubuntu-latest
-    environment: WT_WeeklyTriggerEnv
-    needs: generate-report
-    if: success()
-    steps:
-      - name: Install GitHub CLI
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gh jq
-
-      - name: Checkout latest commit from main
-        run: |
-          git init
-          git remote add origin https://github.com/${{ github.repository }}
-          git fetch origin main
-          git checkout origin/main
-
-      - name: Find latest monthly report
-        id: find_latest_monthly
-        run: |
-          echo "🔍 Scanning for latest MonthlyReport..."
-          latest_file=$(find MonthlyReport -type f -name "MonthlyReport-*.xlsx" | sort | tail -n 1)
-
-          if [[ -z "$latest_file" || ! -f "$latest_file" ]]; then
-            echo "❌ No monthly report found."
-            exit 1
-          fi
-
-          echo "✅ Found: $latest_file"
-
-          filename=$(basename "$latest_file")
-          year_month=$(echo "$filename" | grep -oP '(?<=MonthlyReport-)[0-9]{6}')
-
-          echo "📦 Scanning existing monthly tags with prefix: monthly-${year_month}-Ver"
-
-          existing_tags=$(gh release list --limit 100 --json tagName | jq -r ".[] | .tagName" | grep -E "^monthly-${year_month}-Ver[0-9]+$" || true)
-
-          max_ver=$(echo "$existing_tags" | grep -oE 'Ver[0-9]+' | sed 's/Ver//' | sort -n | tail -n 1)
-
-          if [[ -z "$max_ver" ]]; then
-            new_ver=1
-          else
-            new_ver=$((max_ver + 1))
-          fi
-
-          tag="monthly-${year_month}-Ver${new_ver}"
-          echo "🆕 New tag: $tag"
-
-          echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
-          echo "REPORT_FILE=$latest_file" >> $GITHUB_ENV
-          echo "REPORT_NAME=$filename" >> $GITHUB_ENV
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-
-      - name: Create GitHub Release
-        run: |
-          gh release create "$RELEASE_TAG" \
-            "$REPORT_FILE#${REPORT_NAME}" \
-            --title "Monthly Report - $RELEASE_TAG" \
-            --notes "Automated monthly report"
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
-
-      - name: Remove old releases for the same month
-        run: |
-          echo "🧹 Cleaning up other releases for the same month..."
-
-          current_month_prefix=$(echo "${{ env.RELEASE_TAG }}" | grep -oP 'monthly-\K[0-9]{6}')
-
-          gh release list --limit 100 --json tagName,createdAt | \
-            jq -c '.[] | select(.tagName | test("^monthly-'$current_month_prefix'$"))' | \
-            while read line; do
-              tag=$(echo "$line" | jq -r '.tagName')
-
-              if [[ "$tag" == "${{ env.RELEASE_TAG }}" ]]; then
-                echo "⏭️ Skipping current release: $tag"
-                continue
-              fi
-
-              echo "🗑️ Deleting other release from the same month: $tag"
-              gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
-              if git ls-remote --tags origin | grep -q "refs/tags/$tag$"; then
-                echo "🔖 Tag $tag exists. Deleting..."
-                gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
-              else
-                echo "ℹ️ Tag $tag does not exist. Skipping tag deletion."
-              fi  
-            done
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
