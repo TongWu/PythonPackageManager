@@ -301,7 +301,12 @@ jobs:
 
             echo "🗑️ Deleting $tag"
             gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
-            gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+            if git ls-remote --tags origin | grep -q "refs/tags/$tag$"; then
+              echo "🔖 Tag $tag exists. Deleting..."
+              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+            else
+              echo "ℹ️ Tag $tag does not exist. Skipping tag deletion."
+            fi
           done
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
@@ -381,7 +386,12 @@ jobs:
 
               echo "🗑️ Deleting other release from the same month: $tag"
               gh release delete "$tag" --yes || echo "⚠️ Failed to delete release $tag"
-              gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+              if git ls-remote --tags origin | grep -q "refs/tags/$tag$"; then
+                echo "🔖 Tag $tag exists. Deleting..."
+                gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || echo "⚠️ Failed to delete tag ref $tag"
+              else
+                echo "ℹ️ Tag $tag does not exist. Skipping tag deletion."
+              fi  
             done
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}

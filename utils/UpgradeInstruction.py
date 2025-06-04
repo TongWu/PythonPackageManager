@@ -126,13 +126,13 @@ async def get_safe_dependency_versions(dependencies: list[str]) -> dict[str, str
             except Exception as e:
                 logger.warning(f"Failed to schedule version check for {dep}: {e}")
 
-        safe_versions = await asyncio.gather(*tasks, return_exceptions=True)
+        SafeVersions = await asyncio.gather(*tasks, return_exceptions=True)
 
         # fill in real values
-        for (pkg_name, safe) in zip(results.keys(), safe_versions):
+        for (PkgName, safe) in zip(results.keys(), SafeVersions):
             if isinstance(safe, Exception) or safe in (None, "Up-to-date"):
                 continue
-            results[pkg_name] = safe
+            results[PkgName] = safe
 
     return results
 
@@ -152,11 +152,11 @@ def generate_upgrade_instruction(base_package: str, target_version: str) -> dict
     # logger.info(f"{base_package}=={target_version} requires: {requires_dist}")
 
     # Use asyncio.run to avoid 'event loop already running' issues
-    safe_versions = asyncio.run(get_safe_dependency_versions(requires_dist))
+    SafeVersions = asyncio.run(get_safe_dependency_versions(requires_dist))
 
     instruction = {
         "base_package": f"{base_package}=={target_version}",
-        "dependencies": [f"{k}=={v}" for k, v in safe_versions.items() if v]
+        "dependencies": [f"{k}=={v}" for k, v in SafeVersions.items() if v]
     }
     return instruction
 
