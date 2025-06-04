@@ -118,20 +118,20 @@ def load_base_packages() -> set:
         logger.warning(f"Failed to load base package list: {e}")
     return base_set
 
-def parse_requirements(requirements_file: str) -> dict:
+def parse_requirements(RequirementsFile: str) -> dict:
     """
     Parse a requirements.txt file into a dictionary.
 
     Supports basic parsing of version constraints like ==, >=, <=, ~=, !=.
 
     Args:
-        requirements_file (str): Path to a pip requirements file.
+        RequirementsFile (str): Path to a pip requirements file.
 
     Returns:
         dict: Mapping of package names to their specified version strings.
     """
     pkgs = {}
-    with open(requirements_file, encoding='utf-8') as f:
+    with open(RequirementsFile, encoding='utf-8') as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith('#'):
@@ -140,7 +140,7 @@ def parse_requirements(requirements_file: str) -> dict:
             m = re.search(r"(==|>=|<=|~=|!=)(.+)", line)
             ver = m.group(2).strip() if m else 'unknown'
             pkgs[name] = ver
-    logger.info(f"Parsed {len(pkgs)} packages from {requirements_file}")
+    logger.info(f"Parsed {len(pkgs)} packages from {RequirementsFile}")
     return pkgs
 
 def extract_dependencies(info: dict) -> list:

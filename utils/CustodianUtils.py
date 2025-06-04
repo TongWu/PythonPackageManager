@@ -57,15 +57,15 @@ def load_custodian_map(path: str) -> dict:
             reader = csv.DictReader(f)
             for row in reader:
                 pkg = row.get("Package Name", "").strip().lower()
-                custodian = row.get("Custodian", "").strip()
-                pkg_type = row.get("Package Type", "").strip()
+                Custodian = row.get("Custodian", "").strip()
+                PkgType = row.get("Package Type", "").strip()
                 if pkg:
-                    mapping[pkg] = (custodian, pkg_type)
+                    mapping[pkg] = (Custodian, PkgType)
     except Exception as e:
         logger.error(f"Failed to load custodian map: {e}")
     return mapping
 
-def custom_sort_key(row: dict, custom_order: dict) -> tuple:
+def custom_sort_key(row: dict, CustomOrder: dict) -> tuple:
     """
     Generate a composite sorting key for a package report row based on custodian and package type.
 
@@ -76,18 +76,18 @@ def custom_sort_key(row: dict, custom_order: dict) -> tuple:
 
     Args:
         row (dict): A dictionary representing a single row in the report.
-        custom_order (dict): Mapping from custodian name to sort rank (e.g. {"Org1": 0, "Org2": 1}).
+        CustomOrder (dict): Mapping from custodian name to sort rank (e.g. {"Org1": 0, "Org2": 1}).
 
     Returns:
-        tuple: Sorting key as (custodian_rank, package_type_rank, package_name_lower)
+        tuple: Sorting key as (CustodianRank, package_type_rank, package_name_lower)
     """
-    custodian = row.get("Custodian", "")
-    custodian_rank = custom_order.get(custodian, len(custom_order))
+    Custodian = row.get("Custodian", "")
+    CustodianRank = CustomOrder.get(Custodian, len(CustomOrder))
 
     type_order = {"Base Package": 0, "Dependency Package": 1}
-    pkg_type = row.get("Package Type", "")
-    pkg_type_rank = type_order.get(pkg_type, 2)
+    PkgType = row.get("Package Type", "")
+    PkgTypeRank = type_order.get(PkgType, 2)
 
-    pkg_name = row.get("Package Name", "").lower()
+    PkgName = row.get("Package Name", "").lower()
 
-    return (custodian_rank, pkg_type_rank, pkg_name)
+    return (CustodianRank, PkgTypeRank, PkgName)

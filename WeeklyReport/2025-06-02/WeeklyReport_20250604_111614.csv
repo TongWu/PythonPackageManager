@@ -1,0 +1,2 @@
+﻿Package Name,Package Type,Custodian,Current Version,Dependencies for Current,Newer Versions,Dependencies for Latest,Latest Version,Current Version Vulnerable?,Current Version Vulnerability Details,Upgrade Version Vulnerable?,Upgrade Vulnerability Details,Suggested Upgrade,Upgrade Instruction,Remarks
+absl-py,Dependency Package,I&S,2.1.0,,"2.2.0, 2.2.1, 2.2.2, 2.3.0",,2.3.0,No,,No,None,2.3.0,"{'base_package': 'absl-py==2.3.0', 'dependencies': []}",
