@@ -67,7 +67,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mutt
 
-
       - name: DEBUG - Check pip health
         run: |
           pip --version
