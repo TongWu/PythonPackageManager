@@ -369,13 +369,6 @@ def main() -> None:
         
     else:
         print("ℹ️ No packages matched Personal Report criteria. Skipping personal report generation.")
-    
-    # Output to GitHub Actions env file
-    PersonalReportRowNum = len(PersonalReportRows)
-    # Save to OS temp folder
-    with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.txt') as f:
-        f.write(str(PersonalReportRowNum))
-        print(f"UPGRADE_COUNT_PATH={f.name}")
 
     # Summary logging
     total = len(rows)
