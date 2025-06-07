@@ -2,7 +2,7 @@ name: Generate Report
 
 on:
   schedule:
-    - cron: '0 0 * * MON,TUE,WED,THU,FRI'
+    - cron: '0 0 * * MON,THU'
   workflow_dispatch:
   push:
     branches:
