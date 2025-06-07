@@ -71,7 +71,7 @@ jobs:
       - name: DEBUG - Print config.env
         run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
 
-      - name: Run weekly report and extract upgrade info
+      - name: Run weekly report and extract personal report info
         id: run_report
         run: |
           output=$(python GenerateReport.py | tee /dev/stderr)
@@ -80,17 +80,17 @@ jobs:
           echo "📄 Using fixed summary path: $summary_path"
 
           if [[ ! -f "$summary_path" ]]; then
-            echo "❌ Summary file not found!"
-            exit 1
+            echo "⚠️ Summary file not found. No packages to upgrade."
+            echo "UPGRADE_COUNT=0" >> $GITHUB_ENV
+            echo "UPGRADE_PKG_LIST=" >> $GITHUB_ENV
+          else
+            count=$(grep -oP '^UPGRADE_COUNT=\K\d+' "$summary_path")
+            pkgs=$(awk '/^PACKAGE_LIST:/ {flag=1; next} /^$/ {flag=0} flag' "$summary_path")
+            echo "UPGRADE_COUNT=$count" >> $GITHUB_ENV
+            echo "UPGRADE_PKG_LIST<<EOF" >> $GITHUB_ENV
+            echo "$pkgs" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
           fi
-
-          count=$(grep -oP '^UPGRADE_COUNT=\K\d+' "$summary_path")
-          pkgs=$(awk '/^PACKAGE_LIST:/ {flag=1; next} /^$/ {flag=0} flag' "$summary_path")
-
-          echo "UPGRADE_COUNT=$count" >> $GITHUB_ENV
-          echo "UPGRADE_PKG_LIST<<EOF" >> $GITHUB_ENV
-          echo "$pkgs" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
 
       - name: DEBUG - Show changed files
         run: |
@@ -123,31 +123,27 @@ jobs:
             exit 1
           }
 
-      - name: Send Personal Report Email
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: ${{ secrets.SMTP_SERVER }}
-          server_port: ${{ secrets.SMTP_PORT }}
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "🔐 Personal Report - ${{ env.UPGRADE_COUNT }} packages need upgrade"
-          to: ${{ secrets.EMAIL_TO_LIST }}
-          from: "Package Bot <${{ secrets.EMAIL_USERNAME }}>"
-          body: |
-            Hello team,
+      - name: Send Personal Report Email with mutt
+        run: |
+          subject=""
+          body_file="email_body.txt"
 
-            Please find attached the latest personal report.
+          if [ "${{ env.UPGRADE_COUNT }}" -eq 0 ]; then
+            subject="✅ Personal Report - No packages need upgrade"
+            echo -e "Hello team,\n\nNo packages require upgrade this week.\n\nRegards,\nReport Bot" > "$body_file"
+            attachments=""
+          else
+            subject="🔐 Personal Report - ${{ env.UPGRADE_COUNT }} packages need upgrade"
+            echo -e "Hello team,\n\n🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}\n\n📦 Package list:\n${{ env.UPGRADE_PKG_LIST }}\n\nRegards,\nReport Bot" > "$body_file"
+            attachments="-a temp/PersonalReport.csv -a temp/PersonalReport.html"
+          fi
 
-            🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}
+          echo "📧 Sending mail with subject: $subject"
 
-            📦 Package list:
-            ${{ env.UPGRADE_PKG_LIST }}
-
-            Regards,
-            Report Bot
-          attachments: |
-            temp/PersonalReport.csv
-            temp/PersonalReport.html
+          echo "Sending to: ${{ secrets.EMAIL_TO_LIST }}"
+          mutt -e "set smtp_url=smtp://${{ secrets.EMAIL_USERNAME }}:${{ secrets.EMAIL_PASSWORD }}@${{ secrets.SMTP_SERVER }}:${{ secrets.SMTP_PORT }}" \
+               -e "set from='${{ secrets.EMAIL_USERNAME }}'" \
+               -s "$subject" $attachments -- "${{ secrets.EMAIL_TO_LIST }}" < "$body_file"
 
   create-weekly-release:
     name: Create Weekly Report Release
