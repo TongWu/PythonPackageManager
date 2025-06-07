@@ -76,8 +76,8 @@ jobs:
         run: |
           output=$(python GenerateReport.py | tee /dev/stderr)
 
-          summary_path=$(echo "$output" | grep -oP 'TEMP_PERSONAL_REPORT_FILE=\K.*')
-          echo "📄 Found summary path: $summary_path"
+          summary_path="temp/PersonalReportSummary.txt"
+          echo "📄 Using fixed summary path: $summary_path"
 
           if [[ ! -f "$summary_path" ]]; then
             echo "❌ Summary file not found!"

@@ -366,8 +366,6 @@ def main() -> None:
             f.write("PACKAGE_LIST:\n")
             for row in PersonalReportRows:
                 f.write(f"- {row['Package Name']} ({row['Current Version']})\n")
-        print(f"TEMP_PERSONAL_REPORT_FILE={summary_txt_path}")
-
         
     else:
         print("ℹ️ No packages matched Personal Report criteria. Skipping personal report generation.")
