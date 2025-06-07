@@ -71,8 +71,26 @@ jobs:
       - name: DEBUG - Print config.env
         run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
 
-      - name: Run weekly report script
-        run: python GenerateReport.py
+      - name: Run weekly report and extract upgrade info
+        id: run_report
+        run: |
+          output=$(python GenerateReport.py | tee /dev/stderr)
+
+          summary_path=$(echo "$output" | grep -oP 'TEMP_PERSONAL_REPORT_FILE=\K.*')
+          echo "📄 Found summary path: $summary_path"
+
+          if [[ ! -f "$summary_path" ]]; then
+            echo "❌ Summary file not found!"
+            exit 1
+          fi
+
+          count=$(grep -oP '^UPGRADE_COUNT=\K\d+' "$summary_path")
+          pkgs=$(awk '/^PACKAGE_LIST:/ {flag=1; next} /^$/ {flag=0} flag' "$summary_path")
+
+          echo "UPGRADE_COUNT=$count" >> $GITHUB_ENV
+          echo "UPGRADE_PKG_LIST<<EOF" >> $GITHUB_ENV
+          echo "$pkgs" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: DEBUG - Show changed files
         run: |
@@ -104,6 +122,32 @@ jobs:
             echo "❌ Push failed. Someone else may have pushed changes. Please re-run the workflow."
             exit 1
           }
+
+      - name: Send Personal Report Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🔐 Personal Report - ${{ env.UPGRADE_COUNT }} packages need upgrade"
+          to: ${{ secrets.EMAIL_TO_LIST }}
+          from: "Package Bot <${{ secrets.EMAIL_USERNAME }}>"
+          body: |
+            Hello team,
+
+            Please find attached the latest personal report.
+
+            🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}
+
+            📦 Package list:
+            ${{ env.UPGRADE_PKG_LIST }}
+
+            Regards,
+            Report Bot
+          attachments: |
+            temp/PersonalReport.csv
+            temp/PersonalReport.html
 
   create-weekly-release:
     name: Create Weekly Report Release

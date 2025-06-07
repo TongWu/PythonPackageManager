@@ -14,6 +14,7 @@ import logging
 import shlex
 import argparse
 import asyncio
+import tempfile
 from dotenv import load_dotenv
 from datetime import datetime
 from logging import StreamHandler, Formatter
@@ -60,6 +61,8 @@ CUSTODIAN_LIST = os.getenv("CUSTODIAN_LIST", "src/custodian.csv")
 NOTUSED_PACKAGES = os.getenv("NOTUSED_PACKAGES", "src/NotUsed.txt")
 PIP_AUDIT_CMD = shlex.split(os.getenv("PIP_AUDIT_CMD", "pip-audit --format json"))
 SEMAPHORE_NUMBER = int(os.getenv("SEMAPHORE_NUMBER", 3))
+PERSONAL_REPORT_DIR = os.getenv("PERSONAL_REPORT_DIR", "temp/")
+os.makedirs(PERSONAL_REPORT_DIR, exist_ok=True)
 failed_versions = []
 
 # Configure logger
@@ -324,6 +327,57 @@ def main() -> None:
         print(f"\U0001F4C4 Monthly Excel report saved to {monthly_file_path}")
     except Exception as e:
         print(f"\u274C Failed to write monthly Excel report: {e}")
+
+    # Personal Report: For email notification report only
+    # Filter only vulnerable and not marked as Not Used
+    PersonalReportRows = [
+        r for r in rows
+        if r['Current Version Vulnerable?'] == 'Yes' and "not used" not in r['Remarks'].lower()
+    ]
+
+    if PersonalReportRows:
+        # Save personal report files
+        personal_csv_path = os.path.join(PERSONAL_REPORT_DIR, "PersonalReport.csv")
+        personal_html_path = os.path.join(PERSONAL_REPORT_DIR, "PersonalReport.html")
+        summary_txt_path = os.path.join(PERSONAL_REPORT_DIR, "PersonalReportSummary.txt")
+
+        # Save PersonalReport.csv
+        with open(personal_csv_path, 'w', newline='', encoding='utf-8-sig') as pf:
+            writer = csv.DictWriter(pf, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(PersonalReportRows)
+        print(f"✅ Personal CSV report saved to {personal_csv_path}")
+
+        # Save PersonalReport.html
+        env = Environment(loader=FileSystemLoader('templates'))
+        template = env.get_template('weekly_report.html.j2')
+        personal_html = template.render(
+            headers=fieldnames,
+            rows=PersonalReportRows,
+            generated_at=now_sg().strftime("%Y-%m-%d %H:%M:%S %Z")
+        )
+        with open(personal_html_path, 'w', encoding='utf-8') as f:
+            f.write(personal_html)
+        print(f"✅ Personal HTML report saved to {personal_html_path}")
+
+        # Save summary info
+        with open(summary_txt_path, "w") as f:
+            f.write(f"UPGRADE_COUNT={len(PersonalReportRows)}\n")
+            f.write("PACKAGE_LIST:\n")
+            for row in PersonalReportRows:
+                f.write(f"- {row['Package Name']} ({row['Current Version']})\n")
+        print(f"TEMP_PERSONAL_REPORT_FILE={summary_txt_path}")
+
+        
+    else:
+        print("ℹ️ No packages matched Personal Report criteria. Skipping personal report generation.")
+    
+    # Output to GitHub Actions env file
+    PersonalReportRowNum = len(PersonalReportRows)
+    # Save to OS temp folder
+    with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.txt') as f:
+        f.write(str(PersonalReportRowNum))
+        print(f"UPGRADE_COUNT_PATH={f.name}")
 
     # Summary logging
     total = len(rows)
