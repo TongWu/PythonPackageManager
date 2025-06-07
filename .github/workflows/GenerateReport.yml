@@ -150,6 +150,12 @@ jobs:
           mutt -e "set smtp_url=smtp://${{ secrets.EMAIL_USERNAME }}:${{ secrets.EMAIL_PASSWORD }}@${{ secrets.SMTP_SERVER }}:${{ secrets.SMTP_PORT }}" \
                -e "set from='${{ secrets.EMAIL_USERNAME }}'" \
                -s "$subject" $attachments -- "${{ secrets.EMAIL_TO_LIST }}" < "$body_file"
+          if [ $? -eq 0 ]; then
+            echo "✅ Email sent successfully."
+          else
+            echo "❌ Failed to send email. Please check the SMTP configuration and logs."
+            exit 1
+          fi
 
   upload-report:
     name: Upload to Google Drive
