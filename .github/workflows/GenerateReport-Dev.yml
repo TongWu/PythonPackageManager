@@ -1,15 +1,13 @@
 name: Generate Report (Dev)
 
 on:
-  schedule:
-    - cron: '0 0 * * MON,THU'
   workflow_dispatch:
   push:
     branches:
       - dev
     paths:
       - '**.py'
-      - '.github/workflows/GenerateReport.yml'
+      - '.github/workflows/GenerateReport-Dev.yml'
       - '.github/workflows/PythonSetup/**'
       - '.github/workflows/RcloneSetup/**'
       - '.env'
@@ -52,7 +50,7 @@ jobs:
 
   generate-report:
     name: Generate Weekly Report
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: healthcheck
     environment: WT_WeeklyTriggerEnv
     steps:
@@ -63,6 +61,12 @@ jobs:
         id: setup-python
         uses: ./.github/workflows/PythonSetup
 
+      - name: Install mutt (only on GitHub-hosted runners)
+        if: contains(runner.labels, 'self-hosted') == false
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mutt
+
       - name: DEBUG - Check pip health
         run: |
           pip --version
@@ -71,8 +75,26 @@ jobs:
       - name: DEBUG - Print config.env
         run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
 
-      - name: Run weekly report script
-        run: python GenerateReport.py
+      - name: Run weekly report and extract personal report info
+        id: run_report
+        run: |
+          output=$(python GenerateReport.py | tee /dev/stderr)
+
+          summary_path="temp/PersonalReportSummary.txt"
+          echo "📄 Using fixed summary path: $summary_path"
+
+          if [[ ! -f "$summary_path" ]]; then
+            echo "⚠️ Summary file not found. No packages to upgrade."
+            echo "UPGRADE_COUNT=0" >> $GITHUB_ENV
+            echo "UPGRADE_PKG_LIST=" >> $GITHUB_ENV
+          else
+            count=$(grep -oP '^UPGRADE_COUNT=\K\d+' "$summary_path")
+            pkgs=$(awk '/^PACKAGE_LIST:/ {flag=1; next} /^$/ {flag=0} flag' "$summary_path")
+            echo "UPGRADE_COUNT=$count" >> $GITHUB_ENV
+            echo "UPGRADE_PKG_LIST<<EOF" >> $GITHUB_ENV
+            echo "$pkgs" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
 
       - name: DEBUG - Show changed files
         run: |
@@ -104,6 +126,28 @@ jobs:
             echo "❌ Push failed. Someone else may have pushed changes. Please re-run the workflow."
             exit 1
           }
+
+      - name: Send Personal Report Email with mutt
+        run: |
+          subject=""
+          body_file="email_body.txt"
+
+          if [ "${{ env.UPGRADE_COUNT }}" -eq 0 ]; then
+            subject="✅ Personal Report - No packages need upgrade"
+            echo -e "Hello team,\n\nNo packages require upgrade this week.\n\nRegards,\nReport Bot" > "$body_file"
+            attachments=""
+          else
+            subject="🔐 Personal Report - ${{ env.UPGRADE_COUNT }} packages need upgrade"
+            echo -e "Hello team,\n\n🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}\n\n📦 Package list:\n${{ env.UPGRADE_PKG_LIST }}\n\nRegards,\nReport Bot" > "$body_file"
+            attachments="-a temp/PersonalReport.csv -a temp/PersonalReport.html"
+          fi
+
+          echo "📧 Sending mail with subject: $subject"
+
+          echo "Sending to: ${{ secrets.EMAIL_TO_LIST }}"
+          mutt -e "set smtp_url=smtp://${{ secrets.EMAIL_USERNAME }}:${{ secrets.EMAIL_PASSWORD }}@${{ secrets.SMTP_SERVER }}:${{ secrets.SMTP_PORT }}" \
+               -e "set from='${{ secrets.EMAIL_USERNAME }}'" \
+               -s "$subject" $attachments -- "${{ secrets.EMAIL_TO_LIST }}" < "$body_file"
 
   create-weekly-release:
     name: Create Weekly Report Release
