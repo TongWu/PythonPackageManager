@@ -9,7 +9,7 @@ on:
       - dev
     paths:
       - '**.py'
-      - '.github/workflows/GenerateReport.yml'
+      - '.github/workflows/GenerateReport-Dev.yml'
       - '.github/workflows/PythonSetup/**'
       - '.github/workflows/RcloneSetup/**'
       - '.env'
