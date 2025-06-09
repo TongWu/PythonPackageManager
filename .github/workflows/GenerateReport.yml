@@ -435,7 +435,7 @@ jobs:
           current_month_prefix=$(echo "${{ env.RELEASE_TAG }}" | grep -oP 'monthly-\K[0-9]{6}')
 
           gh release list --limit 100 --json tagName,createdAt | \
-            jq -c '.[] | select(.tagName | test("^monthly-'$current_month_prefix'$"))' | \
+            jq -c '.[] | select(.tagName | test("^monthly-'$current_month_prefix'-Ver[0-9]+$"))' | \
             while read line; do
               tag=$(echo "$line" | jq -r '.tagName')
 
