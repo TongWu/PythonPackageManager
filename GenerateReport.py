@@ -365,7 +365,7 @@ def main() -> None:
             f.write(f"UPGRADE_COUNT={len(PersonalReportRows)}\n")
             f.write("PACKAGE_LIST:\n")
             for row in PersonalReportRows:
-                f.write(f"- {row['Package Name']} ({row['Current Version']})\n")
+                f.write(f"- {row['Package Name']} ({row['Current Version']}) - Custodian: {row['Custodian']}\n")
         
     else:
         print("ℹ️ No packages matched Personal Report criteria. Skipping personal report generation.")
@@ -390,3 +390,4 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\n❌ Execution interrupted by user.")
         sys.exit(1)
+        

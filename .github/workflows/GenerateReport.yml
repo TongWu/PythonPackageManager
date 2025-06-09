@@ -140,7 +140,7 @@ jobs:
             attachments=""
           else
             subject="🔐 Personal Report - ${{ env.UPGRADE_COUNT }} packages need upgrade"
-            echo -e "Hello team,\n\n🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}\n\n📦 Package list:\n${{ env.UPGRADE_PKG_LIST }}\n\nRegards,\nReport Bot" > "$body_file"
+            echo -e "Hello team,\n\n🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}\n\n📦 Package list and custodian:\n${{ env.UPGRADE_PKG_LIST }}\n\nRegards,\nReport Bot" > "$body_file"
             attachments="-a temp/PersonalReport.csv -a temp/PersonalReport.html"
           fi
 
@@ -455,3 +455,4 @@ jobs:
           done
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
+          
