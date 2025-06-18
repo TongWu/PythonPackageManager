@@ -221,7 +221,7 @@ jsonpointer==3.0.0
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
 jupyter-client==8.6.3
-jupyter-core==5.7.2
+jupyter-core==5.8.1
 jupyter-events==0.10.0
 jupyterlab==4.2.5
 jupyterlab-pygments==0.3.0
@@ -468,7 +468,7 @@ recordlinkage==0.16
 referencing==0.35.1
 regex==2024.9.11
 reportlab==4.2.0
-requests==2.32.3
+requests==2.32.4
 requests-cache==0.9.8
 requests-oauthlib==2.0.0
 requests-toolbelt==1.0.0
