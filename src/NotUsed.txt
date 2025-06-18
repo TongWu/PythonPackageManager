@@ -12,3 +12,4 @@ setuptools
 torch
 transformers
 Werkzeug
+llama-index-cli
