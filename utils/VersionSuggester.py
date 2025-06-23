@@ -16,6 +16,7 @@ from logging import StreamHandler, Formatter
 from datetime import datetime
 from utils.SGTUtils import SGTFormatter
 from utils.VulnChecker import fetch_osv
+from utils.GenerateReport_Archive import suggest_upgrade_version
 # Custom formatter (assumes SGTFormatter is defined elsewhere or should be implemented here)
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
@@ -116,6 +117,11 @@ async def suggest_safe_minor_upgrade(pkg: str, current_version: str, all_version
 
 
 def main():
+    """
+    Parses command-line arguments and suggests upgrade versions for a specified Python package.
+    
+    Runs as a script entry point to fetch all available versions of a package from PyPI, suggest a basic upgrade, and optionally suggest a safe minor upgrade that is not affected by known vulnerabilities.
+    """
     parser = argparse.ArgumentParser(description="Suggest upgrade versions")
     parser.add_argument("package", help="Package name on PyPI")
     parser.add_argument("current", help="Current installed version")
