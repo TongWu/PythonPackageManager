@@ -161,7 +161,7 @@ def main() -> None:
             if release_info:
                 for entry in release_info:
                     if 'requires_dist' in entry:
-                        logger.debug(f"requires_dist: \n{requires_dist}")
+                        logger.debug(f"requires_dist: \n{entry['requires_dist']}")
                         cur_ver_deps.extend(entry['requires_dist'])
                         break
             if not cur_ver_deps:
@@ -199,7 +199,7 @@ def main() -> None:
 
         # Get Upgrade Instruction
         if suggested in ("unknown", "Up-to-date"):
-            instruction = {"base_package": f"{pkg}=={version}", "dependencies": []}
+            instruction = {"base_package": f"{pkg}=={cur_ver}", "dependencies": []}
         else:
             instruction = generate_upgrade_instruction(pkg, suggested)
 

@@ -127,8 +127,7 @@ async def check_multiple_versions(
     owns_session = session is None
 
     if owns_session:
-        async with aiohttp.ClientSession() as session:
-            session = aiohttp.ClientSession()
+        session = aiohttp.ClientSession()
 
     try:
         tasks = [fetch_osv(session, package, v, sem) for v in versions]
