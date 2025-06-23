@@ -41,6 +41,38 @@ def get_all_versions(pkg: str) -> list:
     data = r.json()
     return [v for v in data.get("releases", {})]
 
+def suggest_upgrade_version(all_versions: list, current_version: str) -> str:
+    """Suggest the best upgrade version from ``all_versions``.
+
+    Preference is given to the newest version within the same major
+    release.  If none is newer in the same major version, the absolute
+    newest version is returned.  ``Up-to-date`` is returned when no
+    newer release exists.
+    """
+    try:
+        cur_ver = version.parse(current_version)
+        parsed_versions = []
+        for v in all_versions:
+            try:
+                pv = version.parse(v)
+                parsed_versions.append((pv, v))
+            except InvalidVersion:
+                continue
+
+        newer_versions = [v for (pv, v) in parsed_versions if pv > cur_ver]
+        if not newer_versions:
+            return "Up-to-date"
+
+        same_major = [v for (pv, v) in parsed_versions
+                      if pv > cur_ver and pv.major == cur_ver.major]
+        if same_major:
+            return same_major[-1]
+
+        return newer_versions[-1]
+    except Exception as e:
+        logger.error(f"Suggest upgrade error for {current_version}: {e}")
+        return "unknown"
+
 async def suggest_safe_minor_upgrade(pkg: str, current_version: str, all_versions: list) -> str:
     """
     Suggest the highest minor upgrade version that is not vulnerable.
@@ -95,13 +127,13 @@ def main():
     pkg_name = args.package  # used in suggest_safe_minor_upgrade
 
     versions = get_all_versions(pkg_name)
-    basic = suggest_upgrade_version(pkg, versions, args.current)
+    basic = suggest_upgrade_version(versions, args.current)
     print(f"Suggested upgrade: {basic}")
 
     if args.safe_minor:
         safe = asyncio.run(
-        suggest_safe_minor_upgrade(pkg_name, args.current, versions)
-    )
+            suggest_safe_minor_upgrade(pkg_name, args.current, versions)
+        )
         print(f"Safe minor upgrade: {safe}")
 
 if __name__ == "__main__":

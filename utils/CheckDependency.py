@@ -6,6 +6,7 @@ import pandas as pd
 import logging
 from datetime import datetime, timedelta
 import os
+from dotenv import load_dotenv
 
 # ---------------- Logging Configuration ----------------
 from logging import Formatter, StreamHandler
@@ -44,7 +45,7 @@ logger.info(f"Reading base packages from {REQUIREMENTS_FILE}")
 
 # Step 1: Load base package list and save original line
 base_packages = {}
-with open(requirements_file) as f:
+with open(REQUIREMENTS_FILE) as f:
     for line in f:
         line = line.strip()
         if not line or line.startswith("#"):
