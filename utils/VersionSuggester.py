@@ -85,6 +85,11 @@ async def suggest_safe_minor_upgrade(pkg: str, current_version: str, all_version
 
 
 def main():
+    """
+    Parses command-line arguments and suggests upgrade versions for a specified Python package.
+    
+    Runs as a script entry point to fetch all available versions of a package from PyPI, suggest a basic upgrade, and optionally suggest a safe minor upgrade that is not affected by known vulnerabilities.
+    """
     parser = argparse.ArgumentParser(description="Suggest upgrade versions")
     parser.add_argument("package", help="Package name on PyPI")
     parser.add_argument("current", help="Current installed version")
