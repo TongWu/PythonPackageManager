@@ -16,6 +16,7 @@ from logging import StreamHandler, Formatter
 from datetime import datetime
 from utils.SGTUtils import SGTFormatter
 from utils.VulnChecker import fetch_osv
+from utils.GenerateReport_Archive import suggest_upgrade_version
 # Custom formatter (assumes SGTFormatter is defined elsewhere or should be implemented here)
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
@@ -84,6 +85,11 @@ async def suggest_safe_minor_upgrade(pkg: str, current_version: str, all_version
 
 
 def main():
+    """
+    Parses command-line arguments and suggests upgrade versions for a specified Python package.
+    
+    Runs as a script entry point to fetch all available versions of a package from PyPI, suggest a basic upgrade, and optionally suggest a safe minor upgrade that is not affected by known vulnerabilities.
+    """
     parser = argparse.ArgumentParser(description="Suggest upgrade versions")
     parser.add_argument("package", help="Package name on PyPI")
     parser.add_argument("current", help="Current installed version")
@@ -95,13 +101,13 @@ def main():
     pkg_name = args.package  # used in suggest_safe_minor_upgrade
 
     versions = get_all_versions(pkg_name)
-    basic = suggest_upgrade_version(pkg, versions, args.current)
+    basic = suggest_upgrade_version(versions, args.current)
     print(f"Suggested upgrade: {basic}")
 
     if args.safe_minor:
         safe = asyncio.run(
-        suggest_safe_minor_upgrade(pkg_name, args.current, versions)
-    )
+            suggest_safe_minor_upgrade(pkg_name, args.current, versions)
+        )
         print(f"Safe minor upgrade: {safe}")
 
 if __name__ == "__main__":
