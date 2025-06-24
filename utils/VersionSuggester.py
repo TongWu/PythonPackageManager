@@ -120,7 +120,7 @@ def main():
     """
     Parses command-line arguments and suggests upgrade versions for a specified Python package.
     
-    Runs as a script entry point to fetch all available versions of a package from PyPI, suggest a basic upgrade, and optionally suggest a safe minor upgrade that is not affected by known vulnerabilities.
+    Fetches all available versions of the given package from PyPI and, if requested, suggests a minor upgrade that is not affected by known vulnerabilities. Intended to be used as the script's entry point.
     """
     parser = argparse.ArgumentParser(description="Suggest upgrade versions")
     parser.add_argument("package", help="Package name on PyPI")
