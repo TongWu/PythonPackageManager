@@ -16,7 +16,7 @@ from logging import StreamHandler, Formatter
 from datetime import datetime
 from utils.SGTUtils import SGTFormatter
 from utils.VulnChecker import fetch_osv
-from utils.GenerateReport_Archive import suggest_upgrade_version
+# from utils.GenerateReport_Archive import suggest_upgrade_version
 # Custom formatter (assumes SGTFormatter is defined elsewhere or should be implemented here)
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
@@ -133,8 +133,8 @@ def main():
     pkg_name = args.package  # used in suggest_safe_minor_upgrade
 
     versions = get_all_versions(pkg_name)
-    basic = suggest_upgrade_version(versions, args.current)
-    print(f"Suggested upgrade: {basic}")
+    # basic = suggest_upgrade_version(versions, args.current)
+    # print(f"Suggested upgrade: {basic}")
 
     if args.safe_minor:
         safe = asyncio.run(
