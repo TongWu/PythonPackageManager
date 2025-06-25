@@ -7,6 +7,7 @@ including compatible and secure dependency versions.
 import asyncio
 import aiohttp
 import logging
+import os
 from logging import StreamHandler, Formatter
 from packaging.requirements import Requirement
 from utils.PyPiUtils import GetPyPiInfo
@@ -15,6 +16,8 @@ from utils.VulnChecker import fetch_osv
 from packaging.version import Version, InvalidVersion
 from packaging.specifiers import SpecifierSet
 from utils.SGTUtils import SGTFormatter
+from utils.ConfigUtils import parse_requirements
+from dotenv import load_dotenv
 try:
     from zoneinfo import ZoneInfo  # Python 3.9+
 except ImportError:
@@ -26,6 +29,24 @@ formatter = SGTFormatter(fmt='%(asctime)s [%(levelname)s] %(message)s', datefmt=
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 logger.propagate = False  # Avoid duplicate logs from root logger
+
+# cache of current package versions from requirements file
+_CURRENT_VERSIONS: dict[str, str] = {}
+
+
+def _load_current_versions() -> dict[str, str]:
+    """Load current package versions from the requirements file."""
+    if not _CURRENT_VERSIONS:
+        load_dotenv(dotenv_path=".env")
+        req_file = os.getenv("REQUIREMENTS_FILE", "src/requirements_full_list.txt")
+        try:
+            mapping = parse_requirements(req_file)
+            _CURRENT_VERSIONS.update({k.lower(): v for k, v in mapping.items()})
+        except FileNotFoundError:
+            logger.warning(f"Requirements file not found: {req_file}")
+        except Exception as e:  # pragma: no cover - robustness
+            logger.warning(f"Failed to parse requirements from {req_file}: {e}")
+    return _CURRENT_VERSIONS
 
 def _extract_min_version(req: Requirement) -> str | None:
     """
@@ -153,27 +174,70 @@ def generate_upgrade_instruction(base_package: str, target_version: str) -> dict
 
     # Use asyncio.run to avoid 'event loop already running' issues
     SafeVersions = asyncio.run(get_safe_dependency_versions(requires_dist))
+    current_versions = _load_current_versions()
+
+    dependencies: list[str] = []
+    for dep in requires_dist:
+        try:
+            req = Requirement(dep)
+        except Exception as e:  # pragma: no cover - unexpected formats
+            logger.warning(f"Failed to parse dependency {dep}: {e}")
+            continue
+
+        cur = current_versions.get(req.name.lower())
+        if cur:
+            try:
+                if req.specifier.contains(Version(cur), prereleases=True):
+                    # already within required range; skip
+                    continue
+            except InvalidVersion:
+                pass
+
+        safe = SafeVersions.get(req.name)
+        if safe:
+            dependencies.append(f"{req.name}=={safe}")
 
     instruction = {
         "base_package": f"{base_package}=={target_version}",
-        "dependencies": [f"{k}=={v}" for k, v in SafeVersions.items() if v]
+        "dependencies": dependencies,
     }
     return instruction
 
+def _is_version_satisfied(req: Requirement, current_version: str) -> bool:
+    """Check if current version satisfies the requirement."""
+    try:
+        return req.specifier.contains(Version(current_version), prereleases=True)
+    except InvalidVersion:
+        logger.debug(f"Invalid version format: {current_version}")
+        return False
 
 def generate_current_dependency_json(base_package: str,
                                      current_version: str,
                                      requires_dist: list[str]) -> dict:
     """Return current version info with dependency versions."""
-    deps: list[str] = []
+    current_versions = _load_current_versions()
+    # Note: SafeVersions would need to be computed via get_safe_dependency_versions()
+    SafeVersions = asyncio.run(get_safe_dependency_versions(requires_dist))
+
+    dependencies: list[str] = []
     for dep in requires_dist:
         try:
             req = Requirement(dep)
-            ver = _extract_min_version(req)
-            if ver:
-                deps.append(f"{req.name}=={ver}")
-        except Exception as e:  # pragma: no cover - lenient parse
-            logger.warning(f"Failed to parse dependency {dep}: {e}")
+            pkg_name = req.name.lower()
+            
+            # Check if we should skip this dependency
+            current_version = current_versions.get(pkg_name)
+            if current_version and _is_version_satisfied(req, current_version):
+                logger.debug(f"Skipping {req.name}: current version {current_version} satisfies requirement")
+                continue
+                
+            # Add safe version if available
+            safe_version = SafeVersions.get(req.name)
+            if safe_version:
+                dependencies.append(f"{req.name}=={safe_version}")
+                
+        except Exception as e:  # pragma: no cover - unexpected formats
+            logger.warning(f"Failed to process dependency {dep}: {e}")
 
     return {
         "base_package": f"{base_package}=={current_version}",
