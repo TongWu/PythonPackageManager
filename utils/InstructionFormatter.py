@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """Utilities to convert upgrade instruction JSON to human-readable text."""
 
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 
-def instruction_to_text(instruction: Mapping[str, Any] | None) -> str:
+def instruction_to_text(instruction: Optional[Mapping[str, Any]]) -> str:
     """Return a human-readable string from an upgrade instruction dict."""
     if not instruction:
         return ""
