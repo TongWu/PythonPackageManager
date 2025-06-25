@@ -393,6 +393,39 @@ def main() -> None:
                 instr_text = instruction_to_text(row.get('Upgrade Instruction'))
                 if instr_text:
                     f.write(f"  Upgrade Instruction: {instr_text}\n")
+
+        # Save simplified HTML table for email body
+        email_html_path = os.path.join(PERSONAL_REPORT_DIR, "PersonalReportEmail.html")
+        with open(email_html_path, "w", encoding="utf-8") as ef:
+            ef.write("<table border='1' cellspacing='0' cellpadding='4'>\n")
+            ef.write("<tr><th>S/N</th><th>Custodian</th><th>Base Package</th><th>Dependency Packages</th></tr>\n")
+            for idx, row in enumerate(PersonalReportRows, 1):
+                instr = row.get('Upgrade Instruction') or {}
+                custodian = row.get('Custodian', '')
+                base_pkg = row.get('Package Name', '')
+                cur_ver = row.get('Current Version', '')
+                base_instr = instr.get('base_package', '')
+                deps = instr.get('dependencies', []) or []
+
+                target_ver = ''
+                if base_instr:
+                    try:
+                        _, target_ver = base_instr.split('==', 1)
+                    except ValueError:
+                        pass
+
+                base_display = f"{base_pkg} ({cur_ver})"
+                if target_ver:
+                    base_display += f" → {target_ver}"
+
+                if deps:
+                    ef.write(f"<tr><td rowspan='{len(deps)}'>{idx}</td><td rowspan='{len(deps)}'>{custodian}</td><td rowspan='{len(deps)}'>{base_display}</td><td>{deps[0]}</td></tr>\n")
+                    for dep in deps[1:]:
+                        ef.write(f"<tr><td>{dep}</td></tr>\n")
+                else:
+                    ef.write(f"<tr><td>{idx}</td><td>{custodian}</td><td>{base_display}</td><td>-</td></tr>\n")
+            ef.write("</table>\n")
+        print(f"✅ Personal email HTML saved to {email_html_path}")
         
     else:
         print("ℹ️ No packages matched Personal Report criteria. Skipping personal report generation.")
