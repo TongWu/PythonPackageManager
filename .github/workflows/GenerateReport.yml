@@ -143,33 +143,16 @@ jobs:
 
           if [ "${{ env.UPGRADE_COUNT }}" -eq 0 ]; then
             subject="✅ Personal Report - No packages need upgrade"
-            cat <<EOF > "$body_file"
-            Hello team,<br><br>No packages require upgrade this week.<br><br>Regards,<br>Report Bot
-            EOF
+            printf 'Hello team,<br><br>No packages require upgrade this week.<br><br>Regards,<br>Report Bot\n' > "$body_file"
             content_type="text/html"
             attachments=""
           else
             subject="🔐 Personal Report - ${{ env.UPGRADE_COUNT }} packages need upgrade"
-            cat <<EOF > "$body_file"
-            Hello team,<br><br>🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}<br><br>${{ env.UPGRADE_TABLE }}<br><br>Regards,<br>Report Bot
-            EOF
+            printf 'Hello team,<br><br>🔧 Number of packages needing upgrade: %s<br><br>%s<br><br>Regards,<br>Report Bot\n' "$UPGRADE_COUNT" "$UPGRADE_TABLE" > "$body_file"
             content_type="text/html"
             attachments="-a temp/PersonalReport.csv -a temp/PersonalReport.html"
           fi
 
-          echo "📧 Sending mail with subject: $subject"
-
-          echo "Sending to: ${{ secrets.EMAIL_TO_LIST }}"
-          mutt -e "set smtp_url=smtp://${{ secrets.EMAIL_USERNAME }}:${{ secrets.EMAIL_PASSWORD }}@${{ secrets.SMTP_SERVER }}:${{ secrets.SMTP_PORT }}" \
-               -e "set from='${{ secrets.EMAIL_USERNAME }}'" \
-               -e "set content_type=$content_type" \
-               -s "$subject" $attachments -- "${{ secrets.EMAIL_TO_LIST }}" < "$body_file"
-          if [ $? -eq 0 ]; then
-            echo "✅ Email sent successfully."
-          else
-            echo "❌ Failed to send email. Please check the SMTP configuration and logs."
-            exit 1
-          fi
 
   upload-report:
     name: Upload to Google Drive
