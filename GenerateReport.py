@@ -47,6 +47,7 @@ from utils.SGTUtils import (
     now_sg
 )
 from utils.UpgradeInstruction import generate_upgrade_instruction
+from utils.utils import run_py
 
 # ---------------- Configuration ----------------
 # Load environment variables from .env file
@@ -102,7 +103,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Dependency vulnerability scanner")
     parser.add_argument('--output', nargs='+', choices=['csv', 'html', 'json', 'all'], default=['all'],
                         help="Choose one or more output formats (e.g. --output csv html)")
+    parser.add_argument('--update-base', action='store_true',
+                        help='Regenerate base_package_list.txt using CheckDependency.py before generating report')
     args = parser.parse_args()
+
+    # Update base package list if requested or missing
+    if args.update_base or not os.path.exists(BASE_PACKAGE_TXT):
+        logger.info("Updating base package list via CheckDependency.py")
+        run_py(CHECK_DEPENDENCY_SCRIPT)
 
     # Read NotUsed.txt
     try:
@@ -179,14 +187,23 @@ def main() -> None:
 
         deps = info.get('info', {}).get('requires_dist') or []
 
-        suggested = asyncio.run(
-            suggest_safe_minor_upgrade(pkg, cur_ver, all_vs)
-        )
-
         # run both current + upgrade checks in parallel
         (cv_ver, cv_status, cv_details), upgrade_vuln_map = asyncio.run(
             check_cv_uv(pkg, cur_ver, newer, SEMAPHORE_NUMBER)
         )
+
+        # Decide whether upgrade suggestion is needed
+        if cv_status == 'No' or (latest != 'unknown' and cur_ver == latest):
+            suggested = None
+            instruction = None
+        else:
+            suggested = asyncio.run(
+                suggest_safe_minor_upgrade(pkg, cur_ver, all_vs)
+            )
+            if suggested in ("unknown", "Up-to-date"):
+                instruction = None
+            else:
+                instruction = generate_upgrade_instruction(pkg, suggested)
 
         # aggregate
         upgrade_vuln = 'Yes' if any(v[0] == 'Yes' for v in upgrade_vuln_map.values()) else 'No'
@@ -197,11 +214,7 @@ def main() -> None:
         # Get custodian
         custodian, _ = custodian_map.get(pkg.lower(), ("Unknown", "Dependency Package"))
 
-        # Get Upgrade Instruction
-        if suggested in ("unknown", "Up-to-date"):
-            instruction = {"base_package": f"{pkg}=={cur_ver}", "dependencies": []}
-        else:
-            instruction = generate_upgrade_instruction(pkg, suggested)
+        # Get Upgrade Instruction handled above
 
         # Mark for Not Used Packages
         Remarks = "Not Used" if pkg.lower() in NotUsedPackages else ""

@@ -142,6 +142,8 @@ There are two main executable scripts:
 2. **Weekly Report Generation**
    - Run: `python GenerateReport.py --output all`
    - Options: `--output csv html json all` (default: all)
+   - Use `--update-base` to refresh `src/base_package_list.txt` automatically if
+     new packages were added.
    - Reads all maintained files, fetches PyPI metadata, checks vulnerabilities, suggests upgrades, and generates:
      - CSV, HTML, JSON reports in `WeeklyReport/YYYY-MM-DD/`
      - Monthly Excel report in `MonthlyReport/`
@@ -149,7 +151,8 @@ There are two main executable scripts:
 
 **Typical workflow:**
 1. Update/maintain all required data files.
-2. Run `CheckDependency.py` to refresh dependency tree.
+2. Run `CheckDependency.py` to refresh the dependency tree (or use
+   `GenerateReport.py --update-base`).
 3. Run `GenerateReport.py` to produce all reports.
 
 ---
@@ -174,6 +177,8 @@ There are two main executable scripts:
   - For notification or email, found in `temp/`.
 - **Failed Versions:**
   - If any package version fails vulnerability check, see `FailedVersions_*.txt` in the weekly report folder.
+- **Upgrade Information:**
+  - The **Suggested Upgrade** and **Upgrade Instruction** fields are left blank when the current version is already the latest or not vulnerable.
 
 ---
 
