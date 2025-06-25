@@ -73,11 +73,11 @@ for idx, (pkg_key, pkg_line) in enumerate(base_packages.items(), 1):
         logger.info(f"[{idx}/{total_pkgs}] ✅ Installed: {pkg_line}")
 
 # Step 3: Ensure pipdeptree is installed
-logger.info("Checking pipdeptree availability...")
 try:
-    subprocess.run(["pipdeptree", "--version"], check=True, stdout=subprocess.DEVNULL)
-except Exception:
-    logger.info("Installing pipdeptree...")
+    subprocess.run(["pipdeptree", "--version"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    logger.info("pipdeptree is already available")
+except (subprocess.CalledProcessError, FileNotFoundError):
+    logger.info("pipdeptree not found, installing...")
     subprocess.run(["pip", "install", "--quiet", "pipdeptree"], check=True)
 
 # Step 4: Get full dependency tree
