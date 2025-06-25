@@ -224,11 +224,12 @@ def generate_current_dependency_json(base_package: str,
         try:
             req = Requirement(dep)
             pkg_name = req.name.lower()
-            
+
             # Check if we should skip this dependency
-            current_version = current_versions.get(pkg_name)
-            if current_version and _is_version_satisfied(req, current_version):
-                logger.debug(f"Skipping {req.name}: current version {current_version} satisfies requirement")
+            dep_version = current_versions.get(pkg_name)
+            if dep_version and _is_version_satisfied(req, dep_version):
+                logger.debug(
+                    f"Skipping {req.name}: current version {dep_version} satisfies requirement")
                 continue
                 
             # Add safe version if available
@@ -241,7 +242,7 @@ def generate_current_dependency_json(base_package: str,
 
     return {
         "base_package": f"{base_package}=={current_version}",
-        "dependencies": deps,
+        "dependencies": dependencies,
     }
 
 if __name__ == "__main__":
