@@ -429,7 +429,7 @@ def main() -> None:
 
     logger.info("📦 Weekly Report Summary")
     logger.info(f"🔍 Total packages scanned: {total} (Base: {base_count}, Dependency: {dep_count})")
-    logger.info(f"🚨 Vulnerabilities found in current versions:")
+    logger.info("🚨 Vulnerabilities found in current versions:")
     logger.info(
         f"   • Base packages: {base_vuln_used} / {base_count}"
         f" ({base_vuln_notused} packages are not used)"
