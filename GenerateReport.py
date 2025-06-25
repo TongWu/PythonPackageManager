@@ -402,30 +402,22 @@ def main() -> None:
     base_count = sum(1 for r in rows if r['Package Type'] == 'Base Package')
     dep_count = total - base_count
 
-    base_vuln_used = sum(
-        1 for r in rows
-        if r['Package Type'] == 'Base Package'
-        and r['Current Version Vulnerable?'] == 'Yes'
-        and 'not used' not in r['Remarks'].lower()
-    )
-    base_vuln_notused = sum(
-        1 for r in rows
-        if r['Package Type'] == 'Base Package'
-        and r['Current Version Vulnerable?'] == 'Yes'
-        and 'not used' in r['Remarks'].lower()
-    )
-    dep_vuln_used = sum(
-        1 for r in rows
-        if r['Package Type'] == 'Dependency Package'
-        and r['Current Version Vulnerable?'] == 'Yes'
-        and 'not used' not in r['Remarks'].lower()
-    )
-    dep_vuln_notused = sum(
-        1 for r in rows
-        if r['Package Type'] == 'Dependency Package'
-        and r['Current Version Vulnerable?'] == 'Yes'
-        and 'not used' in r['Remarks'].lower()
-    )
+    def count_vulnerabilities(rows, package_type, used_only=True):
+        """Count vulnerable packages by type and usage status."""
+        return sum(
+            1 for r in rows
+            if r['Package Type'] == package_type
+            and r['Current Version Vulnerable?'] == 'Yes'
+            and (
+                ('not used' not in r['Remarks'].lower()) if used_only
+                else ('not used' in r['Remarks'].lower())
+            )
+        )
+
+    base_vuln_used = count_vulnerabilities(rows, 'Base Package', used_only=True)
+    base_vuln_notused = count_vulnerabilities(rows, 'Base Package', used_only=False)
+    dep_vuln_used = count_vulnerabilities(rows, 'Dependency Package', used_only=True)
+    dep_vuln_notused = count_vulnerabilities(rows, 'Dependency Package', used_only=False)
 
     logger.info("📦 Weekly Report Summary")
     logger.info(f"🔍 Total packages scanned: {total} (Base: {base_count}, Dependency: {dep_count})")
