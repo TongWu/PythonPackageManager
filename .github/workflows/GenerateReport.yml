@@ -144,15 +144,15 @@ jobs:
           if [ "${{ env.UPGRADE_COUNT }}" -eq 0 ]; then
             subject="✅ Personal Report - No packages need upgrade"
             cat <<EOF > "$body_file"
-Hello team,<br><br>No packages require upgrade this week.<br><br>Regards,<br>Report Bot
-EOF
+            Hello team,<br><br>No packages require upgrade this week.<br><br>Regards,<br>Report Bot
+            EOF
             content_type="text/html"
             attachments=""
           else
             subject="🔐 Personal Report - ${{ env.UPGRADE_COUNT }} packages need upgrade"
             cat <<EOF > "$body_file"
-Hello team,<br><br>🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}<br><br>${{ env.UPGRADE_TABLE }}<br><br>Regards,<br>Report Bot
-EOF
+            Hello team,<br><br>🔧 Number of packages needing upgrade: ${{ env.UPGRADE_COUNT }}<br><br>${{ env.UPGRADE_TABLE }}<br><br>Regards,<br>Report Bot
+            EOF
             content_type="text/html"
             attachments="-a temp/PersonalReport.csv -a temp/PersonalReport.html"
           fi
