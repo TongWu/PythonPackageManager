@@ -46,7 +46,11 @@ from utils.SGTUtils import (
     SGTFormatter,
     now_sg
 )
-from utils.UpgradeInstruction import generate_upgrade_instruction
+from utils.UpgradeInstruction import (
+    generate_upgrade_instruction,
+    generate_current_dependency_json,
+)
+from utils.InstructionFormatter import instruction_to_text
 from utils.utils import run_py
 
 # ---------------- Configuration ----------------
@@ -200,10 +204,16 @@ def main() -> None:
             suggested = asyncio.run(
                 suggest_safe_minor_upgrade(pkg, cur_ver, all_vs)
             )
-            if suggested in ("unknown", "Up-to-date"):
+            if suggested in (None, "unknown", "Up-to-date") or suggested == cur_ver:
                 instruction = None
             else:
                 instruction = generate_upgrade_instruction(pkg, suggested)
+
+        # Current version dependency JSON (only for base packages)
+        if pkg.lower() in base_packages:
+            current_json = generate_current_dependency_json(pkg, cur_ver, cur_ver_deps)
+        else:
+            current_json = None
 
         # aggregate
         upgrade_vuln = 'Yes' if any(v[0] == 'Yes' for v in upgrade_vuln_map.values()) else 'No'
@@ -224,6 +234,7 @@ def main() -> None:
             'Package Type': 'Base Package' if pkg.lower() in base_packages else 'Dependency Package',
             'Custodian': custodian,
             'Current Version': cur_ver,
+            'Current Version With Dependency JSON': current_json,
             'Dependencies for Current': '; '.join(cur_ver_deps),
             # 'All Available Versions': ', '.join(all_vs),
             'Newer Versions': ', '.join(newer),
@@ -379,6 +390,9 @@ def main() -> None:
             f.write("PACKAGE_LIST:\n")
             for row in PersonalReportRows:
                 f.write(f"- {row['Package Name']} ({row['Current Version']}) - Custodian: {row['Custodian']}\n")
+                instr_text = instruction_to_text(row.get('Upgrade Instruction'))
+                if instr_text:
+                    f.write(f"  Upgrade Instruction: {instr_text}\n")
         
     else:
         print("ℹ️ No packages matched Personal Report criteria. Skipping personal report generation.")
@@ -388,14 +402,42 @@ def main() -> None:
     base_count = sum(1 for r in rows if r['Package Type'] == 'Base Package')
     dep_count = total - base_count
 
-    base_vuln = sum(1 for r in rows if r['Package Type'] == 'Base Package' and r['Current Version Vulnerable?'] == 'Yes')
-    dep_vuln = sum(1 for r in rows if r['Package Type'] == 'Dependency Package' and r['Current Version Vulnerable?'] == 'Yes')
+    base_vuln_used = sum(
+        1 for r in rows
+        if r['Package Type'] == 'Base Package'
+        and r['Current Version Vulnerable?'] == 'Yes'
+        and 'not used' not in r['Remarks'].lower()
+    )
+    base_vuln_notused = sum(
+        1 for r in rows
+        if r['Package Type'] == 'Base Package'
+        and r['Current Version Vulnerable?'] == 'Yes'
+        and 'not used' in r['Remarks'].lower()
+    )
+    dep_vuln_used = sum(
+        1 for r in rows
+        if r['Package Type'] == 'Dependency Package'
+        and r['Current Version Vulnerable?'] == 'Yes'
+        and 'not used' not in r['Remarks'].lower()
+    )
+    dep_vuln_notused = sum(
+        1 for r in rows
+        if r['Package Type'] == 'Dependency Package'
+        and r['Current Version Vulnerable?'] == 'Yes'
+        and 'not used' in r['Remarks'].lower()
+    )
 
     logger.info("📦 Weekly Report Summary")
     logger.info(f"🔍 Total packages scanned: {total} (Base: {base_count}, Dependency: {dep_count})")
     logger.info(f"🚨 Vulnerabilities found in current versions:")
-    logger.info(f"   • Base packages: {base_vuln} / {base_count}")
-    logger.info(f"   • Dependency packages: {dep_vuln} / {dep_count}")
+    logger.info(
+        f"   • Base packages: {base_vuln_used} / {base_count}"
+        f" ({base_vuln_notused} packages are not used)"
+    )
+    logger.info(
+        f"   • Dependency packages: {dep_vuln_used} / {dep_count}"
+        f" ({dep_vuln_notused} packages are not used)"
+    )
 
 if __name__ == '__main__':
     try:

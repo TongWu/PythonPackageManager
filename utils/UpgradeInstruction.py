@@ -160,6 +160,26 @@ def generate_upgrade_instruction(base_package: str, target_version: str) -> dict
     }
     return instruction
 
+
+def generate_current_dependency_json(base_package: str,
+                                     current_version: str,
+                                     requires_dist: list[str]) -> dict:
+    """Return current version info with dependency versions."""
+    deps: list[str] = []
+    for dep in requires_dist:
+        try:
+            req = Requirement(dep)
+            ver = _extract_min_version(req)
+            if ver:
+                deps.append(f"{req.name}=={ver}")
+        except Exception as e:  # pragma: no cover - lenient parse
+            logger.warning(f"Failed to parse dependency {dep}: {e}")
+
+    return {
+        "base_package": f"{base_package}=={current_version}",
+        "dependencies": deps,
+    }
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generate secure upgrade instructions")
