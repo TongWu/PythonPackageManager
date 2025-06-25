@@ -73,12 +73,19 @@ for idx, (pkg_key, pkg_line) in enumerate(base_packages.items(), 1):
         logger.info(f"[{idx}/{total_pkgs}] ✅ Installed: {pkg_line}")
 
 # Step 3: Ensure pipdeptree is installed
-# logger.info("Installing pipdeptree...")
-# subprocess.run(["pip", "install", "--quiet", "pipdeptree"], check=True)
+logger.info("Checking pipdeptree availability...")
+try:
+    subprocess.run(["pipdeptree", "--version"], check=True, stdout=subprocess.DEVNULL)
+except Exception:
+    logger.info("Installing pipdeptree...")
+    subprocess.run(["pip", "install", "--quiet", "pipdeptree"], check=True)
 
 # Step 4: Get full dependency tree
 logger.info("Extracting dependency tree via pipdeptree...")
 result = subprocess.run(["pipdeptree", "--json", "--all"], capture_output=True, text=True)
+if result.returncode != 0:
+    logger.error(f"pipdeptree failed: {result.stderr}")
+    raise SystemExit(1)
 data = json.loads(result.stdout)
 
 # Step 5: Parse tree into map

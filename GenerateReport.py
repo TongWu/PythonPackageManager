@@ -47,6 +47,7 @@ from utils.SGTUtils import (
     now_sg
 )
 from utils.UpgradeInstruction import generate_upgrade_instruction
+from utils.utils import run_py
 
 # ---------------- Configuration ----------------
 # Load environment variables from .env file
@@ -102,7 +103,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Dependency vulnerability scanner")
     parser.add_argument('--output', nargs='+', choices=['csv', 'html', 'json', 'all'], default=['all'],
                         help="Choose one or more output formats (e.g. --output csv html)")
+    parser.add_argument('--update-base', action='store_true',
+                        help='Regenerate base_package_list.txt using CheckDependency.py before generating report')
     args = parser.parse_args()
+
+    # Update base package list if requested or missing
+    if args.update_base or not os.path.exists(BASE_PACKAGE_TXT):
+        logger.info("Updating base package list via CheckDependency.py")
+        run_py(CHECK_DEPENDENCY_SCRIPT)
 
     # Read NotUsed.txt
     try:
