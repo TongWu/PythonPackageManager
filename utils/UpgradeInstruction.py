@@ -215,6 +215,10 @@ def generate_current_dependency_json(base_package: str,
                                      current_version: str,
                                      requires_dist: list[str]) -> dict:
     """Return current version info with dependency versions."""
+    current_versions = _load_current_versions()
+    # Note: SafeVersions would need to be computed via get_safe_dependency_versions()
+    SafeVersions = asyncio.run(get_safe_dependency_versions(requires_dist))
+
     dependencies: list[str] = []
     for dep in requires_dist:
         try:
