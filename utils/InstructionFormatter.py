@@ -10,6 +10,8 @@ def instruction_to_text(instruction: Optional[Mapping[str, Any]]) -> str:
     if not instruction:
         return ""
     base_pkg = instruction.get("base_package", "")
+    if not base_pkg:
+        return ""
     deps = instruction.get("dependencies", []) or []
     if deps:
         dep_str = ", ".join(deps)
