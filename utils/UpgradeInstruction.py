@@ -31,21 +31,24 @@ logger.addHandler(handler)
 logger.propagate = False  # Avoid duplicate logs from root logger
 
 # cache of current package versions from requirements file
-_CURRENT_VERSIONS: dict[str, str] = {}
+_CURRENT_VERSIONS: dict[str, str] | None = None
+
 
 
 def _load_current_versions() -> dict[str, str]:
     """Load current package versions from the requirements file."""
-    if not _CURRENT_VERSIONS:
+    global _CURRENT_VERSIONS
+    if _CURRENT_VERSIONS is None:
+
         load_dotenv(dotenv_path=".env")
         req_file = os.getenv("REQUIREMENTS_FILE", "src/requirements_full_list.txt")
         try:
             mapping = parse_requirements(req_file)
-            _CURRENT_VERSIONS.update({k.lower(): v for k, v in mapping.items()})
-        except FileNotFoundError:
-            logger.warning(f"Requirements file not found: {req_file}")
+            _CURRENT_VERSIONS = {k.lower(): v for k, v in mapping.items()}
         except Exception as e:  # pragma: no cover - robustness
-            logger.warning(f"Failed to parse requirements from {req_file}: {e}")
+            logger.warning(f"Failed to load requirements from {req_file}: {e}")
+            _CURRENT_VERSIONS = {}
+
     return _CURRENT_VERSIONS
 
 def _extract_min_version(req: Requirement) -> str | None:
