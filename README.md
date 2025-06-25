@@ -174,6 +174,8 @@ There are two main executable scripts:
   - For notification or email, found in `temp/`.
 - **Failed Versions:**
   - If any package version fails vulnerability check, see `FailedVersions_*.txt` in the weekly report folder.
+- **Upgrade Information:**
+  - The **Suggested Upgrade** and **Upgrade Instruction** fields are left blank when the current version is already the latest or not vulnerable.
 
 ---
 

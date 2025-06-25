@@ -71,7 +71,7 @@
         {% for row in rows %}
             <tr class="
                 {% if row['Vulnerable?'] == 'Yes' %}vulnerable{% endif %}
-                {% if row['Suggested Upgrade'] not in ['Up-to-date', '', 'unknown'] %} upgradable{% endif %}
+                {% if row['Suggested Upgrade'] not in ['Up-to-date', '', 'unknown', none] %} upgradable{% endif %}
             ">
             {% for h in headers %}
                 {% if h == 'Package Name' %}
