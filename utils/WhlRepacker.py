@@ -3,6 +3,7 @@ import os
 import shutil
 from pathlib import Path
 
+
 def repack_single_wheel(wheel_path: Path, output_dir: Path):
     """Repack a single wheel to use Metadata-Version: 2.3"""
     temp_dir = output_dir / (wheel_path.stem + '_unpacked')
@@ -72,7 +73,7 @@ def process_all_wheels(input_dir: str, output_dir: str = None):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print("Usage: python repack_wheels_batch.py <input_dir> [<output_dir>]")
+        print("Usage: python WhlRepacker.py <input_dir> [<output_dir>]")
     else:
         input_dir = sys.argv[1]
         output_dir = sys.argv[2] if len(sys.argv) > 2 else None
