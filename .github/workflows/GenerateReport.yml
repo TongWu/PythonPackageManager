@@ -471,4 +471,6 @@ jobs:
     name: Sync main to dev
     needs: create-weekly-release
     uses: ./.github/workflows/SyncMainToDev.yml
+    permissions:
+      contents: write
     secrets: inherit
