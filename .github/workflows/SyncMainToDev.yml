@@ -10,6 +10,10 @@ on:
       - main
   workflow_call:
 
+concurrency:
+  group: sync-main-to-dev
+  cancel-in-progress: false
+
 jobs:
   sync:
     runs-on: ubuntu-latest
