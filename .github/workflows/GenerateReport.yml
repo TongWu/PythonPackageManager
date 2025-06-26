@@ -466,3 +466,9 @@ jobs:
           done
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
+
+  sync-main-to-dev:
+    name: Sync main to dev
+    needs: create-weekly-release
+    uses: ./.github/workflows/SyncMainToDev.yml
+    secrets: inherit
