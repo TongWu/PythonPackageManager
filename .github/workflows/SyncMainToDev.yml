@@ -8,6 +8,11 @@ on:
   push:
     branches:
       - main
+  workflow_call:
+
+concurrency:
+  group: sync-main-to-dev
+  cancel-in-progress: false
 
 jobs:
   sync:
