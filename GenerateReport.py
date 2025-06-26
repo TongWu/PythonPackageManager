@@ -336,9 +336,12 @@ def main() -> None:
     }
     custodian_raw_df['Custodian'] = custodian_raw_df['Custodian'].astype(str).map(custodian_map_rev)
 
-    now = datetime.now().strftime("%Y%m-%d-%H%M")
-    monthly_file_path = os.path.join(monthly_report_dir, f"MonthlyReport-{now}.xlsx")
-    YearMonth = datetime.now().strftime("%Y%m")
+    now = now_sg()
+    timestamp = now.strftime("%Y%m-%d-%H%M")
+    monthly_file_path = os.path.join(
+        monthly_report_dir, f"MonthlyReport-{timestamp}.xlsx"
+    )
+    YearMonth = now.strftime("%Y%m")
 
     # Write to Monthly Report
     try:
