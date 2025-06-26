@@ -74,44 +74,61 @@ def suggest_upgrade_version(all_versions: list, current_version: str) -> str:
         logger.error(f"Suggest upgrade error for {current_version}: {e}")
         return "unknown"
 
-async def suggest_safe_minor_upgrade(pkg: str, current_version: str, all_versions: list) -> str:
-    """
-    Suggest the highest minor upgrade version that is not vulnerable.
+async def suggest_safe_minor_upgrade(
+    pkg: str, current_version: str, all_versions: list
+) -> str:
+    """Return the safest upgrade version within the same major release.
 
-    Args:
-        pkg (str): Package name
-        current_version (str): Current installed version
-        all_versions (list): All available versions (str)
-
-    Returns:
-        str: Safe upgrade version or 'Up-to-date' or 'unknown'
+    If all minor versions are vulnerable, try the next major release and
+    return its newest non-vulnerable version.  ``Up-to-date`` is returned
+    when no higher secure version is found.
     """
+
     try:
         cur_ver = version.parse(current_version)
-        minor_safe_versions = []
+
+        minor_candidates: list[tuple[version.Version, str]] = []
+        higher_major: list[tuple[version.Version, str]] = []
 
         for v in all_versions:
             try:
                 pv = version.parse(v)
-                if pv.major == cur_ver.major and pv >= cur_ver:
-                    minor_safe_versions.append((pv, v))  # tuple of (parsed, raw)
             except InvalidVersion:
                 continue
 
-        # Sort in descending order to get latest first
-        minor_safe_versions.sort(reverse=True, key=lambda x: x[0])
+            if pv < cur_ver:
+                continue
+
+            if pv.major == cur_ver.major:
+                minor_candidates.append((pv, v))
+            elif pv.major > cur_ver.major:
+                higher_major.append((pv, v))
+
+        # newest first within current major
+        minor_candidates.sort(reverse=True, key=lambda x: x[0])
 
         sem = asyncio.Semaphore(5)
         async with aiohttp.ClientSession() as session:
-            for _, ver_str in minor_safe_versions:
+            for _, ver_str in minor_candidates:
                 _, status, _ = await fetch_osv(session, pkg, ver_str, sem)
-
-                if status == 'No':
+                if status == "No":
                     return ver_str
+
+            if higher_major:
+                next_major = min(pv.major for pv, _ in higher_major)
+                next_major_versions = [
+                    (pv, v) for pv, v in higher_major if pv.major == next_major
+                ]
+                next_major_versions.sort(reverse=True, key=lambda x: x[0])
+
+                for _, ver_str in next_major_versions:
+                    _, status, _ = await fetch_osv(session, pkg, ver_str, sem)
+                    if status == "No":
+                        return ver_str
 
         return "Up-to-date"
 
-    except Exception as e:
+    except Exception as e:  # pragma: no cover - network/parse issues
         logger.warning(f"Error in suggest_safe_minor_upgrade: {e}")
         return "unknown"
 

@@ -116,13 +116,17 @@ def main() -> None:
         logger.info("Updating base package list via CheckDependency.py")
         run_py(CHECK_DEPENDENCY_SCRIPT)
 
-    # Read NotUsed.txt
+    # Read list of packages marked as not used
     try:
-        with open("./src/NotUsed.txt", "r") as f:
-            NotUsedPackages = set(line.strip().lower() for line in f if line.strip())
-        logger.info(f"Loaded {len(NotUsedPackages)} packages from NotUsed.txt")
+        with open(NOTUSED_PACKAGES, "r") as f:
+            NotUsedPackages = {
+                line.strip().lower() for line in f if line.strip()
+            }
+        logger.info(
+            f"Loaded {len(NotUsedPackages)} packages from {NOTUSED_PACKAGES}"
+        )
     except FileNotFoundError:
-        logger.warning("NotUsed.txt not found.")
+        logger.warning(f"NotUsed file not found: {NOTUSED_PACKAGES}")
         NotUsedPackages = set()
 
     # Load package list need to processed
