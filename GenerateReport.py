@@ -514,8 +514,14 @@ def main() -> None:
                 
                 # Format vulnerability details for HTML (replace newlines with <br> and escape HTML)
                 if vuln_details:
-                    # Replace newlines with <br> and escape HTML entities
-                    formatted_vuln_details = vuln_details.replace('\n', '<br>').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                    # First escape HTML entities (but preserve <br> tags)
+                    formatted_vuln_details = vuln_details.replace('&', '&amp;')
+                    # Replace newlines with <br> tags
+                    formatted_vuln_details = formatted_vuln_details.replace('\n', '<br>')
+                    # Escape < and > but preserve <br> tags
+                    formatted_vuln_details = formatted_vuln_details.replace('<br>', '___BR___')  # Temporarily replace
+                    formatted_vuln_details = formatted_vuln_details.replace('<', '&lt;').replace('>', '&gt;')
+                    formatted_vuln_details = formatted_vuln_details.replace('___BR___', '<br>')  # Restore <br> tags
                 else:
                     formatted_vuln_details = ''
                 
