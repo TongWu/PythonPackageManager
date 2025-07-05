@@ -419,6 +419,7 @@ def main() -> None:
                 cur_ver = row.get('Current Version', '')
                 suggested_ver = row.get('Suggested Upgrade', '')
                 vuln_details = row.get('Current Version Vulnerability Details', '')
+                print(f"🔍 DEBUG: Vulnerability details for {base_pkg}: {vuln_details[:200]}...")
                 
                 base_instr = instr.get('base_package', '')
                 deps = instr.get('dependencies', []) or []
@@ -500,12 +501,16 @@ def main() -> None:
 
                 # Write table rows
                 print(f"🔍 DEBUG: Writing table row {idx} with {len(dependency_rows)} dependency rows")
+                
+                # Format vulnerability details for HTML (replace newlines with <br>)
+                formatted_vuln_details = vuln_details.replace('\n', '<br>') if vuln_details else ''
+                
                 if dependency_rows:
-                    ef.write(f"<tr><td rowspan='{len(dependency_rows)}'>{idx}</td><td rowspan='{len(dependency_rows)}'>{custodian}</td><td rowspan='{len(dependency_rows)}'>{base_display}</td><td>{dependency_rows[0]}</td><td rowspan='{len(dependency_rows)}'>{vuln_details}</td></tr>\n")
+                    ef.write(f"<tr><td rowspan='{len(dependency_rows)}'>{idx}</td><td rowspan='{len(dependency_rows)}'>{custodian}</td><td rowspan='{len(dependency_rows)}'>{base_display}</td><td>{dependency_rows[0]}</td><td rowspan='{len(dependency_rows)}'>{formatted_vuln_details}</td></tr>\n")
                     for dep_row in dependency_rows[1:]:
                         ef.write(f"<tr><td>{dep_row}</td></tr>\n")
                 else:
-                    ef.write(f"<tr><td>{idx}</td><td>{custodian}</td><td>{base_display}</td><td>-</td><td>{vuln_details}</td></tr>\n")
+                    ef.write(f"<tr><td>{idx}</td><td>{custodian}</td><td>{base_display}</td><td>-</td><td>{formatted_vuln_details}</td></tr>\n")
             
             ef.write("</table>\n")
         print(f"✅ Personal email HTML saved to {email_html_path}")
