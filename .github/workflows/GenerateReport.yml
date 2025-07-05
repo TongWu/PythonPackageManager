@@ -127,10 +127,10 @@ jobs:
           SGT_TIME=$(date '+%Y-%m-%d %H:%M SGT')
           
           shopt -s globstar
-          git add WeeklyReport/** ':!*.html' ':!*.json' || true
+          git add WeeklyReport/**/*.csv || true
           git commit -m "📝 Update WeeklyReport on $SGT_TIME" || echo "No changes in WeeklyReport"
 
-          git add MonthlyReport/** ':!*.html' ':!*.json' || true
+          git add MonthlyReport/**/*.xlsx || true
           git commit -m "📊 Update MonthlyReport on $SGT_TIME" || echo "No changes in MonthlyReport"
 
           git add src/BasePackageWithDependencies.csv || true
