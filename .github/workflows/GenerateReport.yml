@@ -102,6 +102,9 @@ jobs:
               echo "UPGRADE_TABLE<<EOF" >> $GITHUB_ENV
               cat "$table_path" >> $GITHUB_ENV
               echo "EOF" >> $GITHUB_ENV
+            else
+              echo "⚠️ Table file not found: $table_path"
+              echo "UPGRADE_TABLE=" >> $GITHUB_ENV
             fi
           fi
 
@@ -158,13 +161,17 @@ jobs:
           subject=""
           body_file="email_body.txt"
       
+          echo "🔍 DEBUG: UPGRADE_COUNT = ${{ env.UPGRADE_COUNT }}"
+          echo "🔍 DEBUG: UPGRADE_TABLE length = ${#UPGRADE_TABLE}"
+          echo "🔍 DEBUG: UPGRADE_TABLE preview = ${UPGRADE_TABLE:0:100}..."
+      
           if [ "${{ env.UPGRADE_COUNT }}" -eq 0 ]; then
             subject="✅ Personal Report - No packages need upgrade"
             printf 'Hello team,<br><br>No packages require upgrade this week.<br><br>Regards,<br>Report Bot\n' > "$body_file"
             attachments=""
           else
             subject="🔐 Personal Report - ${{ env.UPGRADE_COUNT }} packages need upgrade"
-            printf 'Hello team,<br><br>🔧 Number of packages needing upgrade: %s<br><br>%s<br><br>Regards,<br>Report Bot\n' "$UPGRADE_COUNT" "$UPGRADE_TABLE" > "$body_file"
+            printf 'Hello team,<br><br>🔧 Number of packages needing upgrade: %s<br><br>%s<br><br>Regards,<br>Report Bot\n' "${{ env.UPGRADE_COUNT }}" "${{ env.UPGRADE_TABLE }}" > "$body_file"
             attachments="-a temp/PersonalReport.csv -a temp/PersonalReport.html"
           fi
       
