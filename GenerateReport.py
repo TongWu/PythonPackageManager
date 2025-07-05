@@ -81,15 +81,18 @@ logger.propagate = False  # Avoid duplicate logs from root logger
 # ---------------- Utility Functions ----------------
 def main() -> None:
     """
-    Main entry point for generate weekly report workflow.
-
-    - Parses the requirements file.
-    - Fetches metadata and known vulnerabilities.
-    - Suggests upgrades and gathers dependency info.
-    - Outputs reports in selected formats (CSV, HTML, JSON).
-
-    Returns:
-        None
+    Generates a comprehensive weekly vulnerability and upgrade report for Python packages.
+    
+    This function orchestrates the end-to-end workflow for scanning Python dependencies, checking for known vulnerabilities, suggesting safe upgrades, and compiling detailed reports. It parses requirements, fetches PyPI metadata, analyzes dependencies, checks vulnerabilities asynchronously, and aggregates custodian and usage information. Reports are generated in CSV, HTML, JSON, and Excel formats, including specialized personal reports for vulnerable packages. The function also handles monthly summary report creation and enhanced HTML output for email notifications.
+    
+    The workflow includes:
+    - Parsing command-line arguments for output formats and base package list updates.
+    - Loading package lists, custodian mappings, and usage status.
+    - Gathering metadata, dependency, and vulnerability information for each package.
+    - Suggesting upgrades and generating upgrade instructions where applicable.
+    - Writing reports in multiple formats and generating summary statistics.
+    
+    No value is returned.
     """
     paths = get_report_paths()
     report_dir = get_report_output_folder()
@@ -401,19 +404,24 @@ def main() -> None:
                 if instr_text:
                     f.write(f"  Upgrade Instruction: {instr_text}\n")
 
-        # Save simplified HTML table for email body
+        # Save enhanced HTML table for email body with new requirements
         email_html_path = os.path.join(PERSONAL_REPORT_DIR, "PersonalReportEmail.html")
         with open(email_html_path, "w", encoding="utf-8") as ef:
             ef.write("<table border='1' cellspacing='0' cellpadding='4'>\n")
-            ef.write("<tr><th>S/N</th><th>Custodian</th><th>Base Package</th><th>Dependency Packages</th></tr>\n")
+            ef.write("<tr><th>S/N</th><th>Custodian</th><th>Base Package</th><th>Dependency Packages</th><th>Vulnerability Details</th></tr>\n")
+            
             for idx, row in enumerate(PersonalReportRows, 1):
                 instr = row.get('Upgrade Instruction') or {}
                 custodian = row.get('Custodian', '')
                 base_pkg = row.get('Package Name', '')
                 cur_ver = row.get('Current Version', '')
+                suggested_ver = row.get('Suggested Upgrade', '')
+                vuln_details = row.get('Current Version Vulnerability Details', '')
+                
                 base_instr = instr.get('base_package', '')
                 deps = instr.get('dependencies', []) or []
 
+                # Extract target version from base package instruction
                 target_ver = ''
                 if base_instr:
                     try:
@@ -421,16 +429,65 @@ def main() -> None:
                     except ValueError:
                         pass
 
+                # Format base package display with current → suggested version
                 base_display = f"{base_pkg} ({cur_ver})"
-                if target_ver:
+                if target_ver and target_ver != cur_ver:
                     base_display += f" → {target_ver}"
+                elif suggested_ver and suggested_ver not in ['Up-to-date', '', 'unknown', None]:
+                    base_display += f" → {suggested_ver}"
 
+                # Process dependency packages with reasons and new version requirements
+                dependency_rows = []
                 if deps:
-                    ef.write(f"<tr><td rowspan='{len(deps)}'>{idx}</td><td rowspan='{len(deps)}'>{custodian}</td><td rowspan='{len(deps)}'>{base_display}</td><td>{deps[0]}</td></tr>\n")
-                    for dep in deps[1:]:
-                        ef.write(f"<tr><td>{dep}</td></tr>\n")
+                    # Get current dependency info for comparison
+                    current_deps_json = row.get('Current Version With Dependency JSON', '{}')
+                    try:
+                        current_deps_data = json.loads(current_deps_json)
+                        current_deps = {dep.split('==')[0]: dep.split('==')[1] if '==' in dep else 'unknown'
+                                         for dep in current_deps_data.get('dependencies', []) if current_deps_data}
+                    except (json.JSONDecodeError, KeyError, AttributeError):
+                        current_deps = {}
+                    
+                    # Get new version dependency requirements
+                    new_version_deps = row.get('Dependencies for Latest', '')
+                    new_version_deps_list = [dep.strip() for dep in new_version_deps.split(';') if dep.strip()]
+                    
+                    for dep in deps:
+                        dep_name = dep.split('==')[0] if '==' in dep else dep
+                        dep_version = dep.split('==')[1] if '==' in dep else 'unknown'
+                        current_version = current_deps.get(dep_name, 'unknown')
+                        
+                        # Find the new version requirement for this dependency
+                        new_version_req = "unknown"
+                        for new_dep in new_version_deps_list:
+                            if new_dep.startswith(f"{dep_name}>=") or new_dep.startswith(f"{dep_name}<") or new_dep.startswith(f"{dep_name}~="):
+                                new_version_req = new_dep
+                                break
+                            elif new_dep.startswith(f"{dep_name}") and "==" not in new_dep:
+                                new_version_req = new_dep
+                                break
+                        
+                        # Determine upgrade reason
+                        reason = "Dependency requirement change"
+                        if current_version != 'unknown' and current_version != dep_version:
+                            reason = f"Version upgrade required: {current_version} → {dep_version}"
+                        
+                        # Enhanced display with new version requirements
+                        if new_version_req != "unknown":
+                            dependency_rows.append(f"{dep} (Reason: {reason}, New version requires: {new_version_req})")
+                        else:
+                            dependency_rows.append(f"{dep} (Reason: {reason})")
                 else:
-                    ef.write(f"<tr><td>{idx}</td><td>{custodian}</td><td>{base_display}</td><td>-</td></tr>\n")
+                    dependency_rows.append("-")
+
+                # Write table rows
+                if dependency_rows:
+                    ef.write(f"<tr><td rowspan='{len(dependency_rows)}'>{idx}</td><td rowspan='{len(dependency_rows)}'>{custodian}</td><td rowspan='{len(dependency_rows)}'>{base_display}</td><td>{dependency_rows[0]}</td><td rowspan='{len(dependency_rows)}'>{vuln_details}</td></tr>\n")
+                    for dep_row in dependency_rows[1:]:
+                        ef.write(f"<tr><td>{dep_row}</td></tr>\n")
+                else:
+                    ef.write(f"<tr><td>{idx}</td><td>{custodian}</td><td>{base_display}</td><td>-</td><td>{vuln_details}</td></tr>\n")
+            
             ef.write("</table>\n")
         print(f"✅ Personal email HTML saved to {email_html_path}")
         
