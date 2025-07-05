@@ -418,10 +418,18 @@ def main() -> None:
                 base_pkg = row.get('Package Name', '')
                 cur_ver = row.get('Current Version', '')
                 suggested_ver = row.get('Suggested Upgrade', '')
-                vuln_details = row.get('Current Version Vulnerability Details', '')
-                print(f"🔍 DEBUG: Vulnerability details for {base_pkg}: {vuln_details[:200]}...")
-                print(f"🔍 DEBUG: Full vulnerability details length: {len(vuln_details)}")
-                print(f"🔍 DEBUG: Full vulnerability details: {vuln_details}")
+                current_vuln_details = row.get('Current Version Vulnerability Details', '')
+                upgrade_vuln_details = row.get('Upgrade Vulnerability Details', '')
+                
+                # Combine current and upgrade vulnerability details
+                vuln_details = current_vuln_details
+                if upgrade_vuln_details and upgrade_vuln_details != current_vuln_details:
+                    vuln_details += f"\n\nUpgrade Version Vulnerabilities:\n{upgrade_vuln_details}"
+                
+                print(f"🔍 DEBUG: Current vulnerability details for {base_pkg}: {current_vuln_details[:200]}...")
+                print(f"🔍 DEBUG: Upgrade vulnerability details for {base_pkg}: {upgrade_vuln_details[:200]}...")
+                print(f"🔍 DEBUG: Combined vulnerability details length: {len(vuln_details)}")
+                print(f"🔍 DEBUG: Combined vulnerability details: {vuln_details}")
                 
                 base_instr = instr.get('base_package', '')
                 deps = instr.get('dependencies', []) or []
