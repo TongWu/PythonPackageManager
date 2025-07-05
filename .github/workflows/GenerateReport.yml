@@ -99,6 +99,10 @@ jobs:
             echo "$pkgs" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
             if [[ -f "$table_path" ]]; then
+              echo "📄 Table file found: $table_path"
+              echo "📏 Table file size: $(wc -c < "$table_path") bytes"
+              echo "📋 Table file content preview:"
+              head -5 "$table_path"
               echo "UPGRADE_TABLE<<EOF" >> $GITHUB_ENV
               cat "$table_path" >> $GITHUB_ENV
               echo "EOF" >> $GITHUB_ENV
@@ -164,6 +168,8 @@ jobs:
           echo "🔍 DEBUG: UPGRADE_COUNT = ${{ env.UPGRADE_COUNT }}"
           echo "🔍 DEBUG: UPGRADE_TABLE length = ${#UPGRADE_TABLE}"
           echo "🔍 DEBUG: UPGRADE_TABLE preview = ${UPGRADE_TABLE:0:100}..."
+          echo "🔍 DEBUG: Full UPGRADE_TABLE content:"
+          echo "$UPGRADE_TABLE"
       
           if [ "${{ env.UPGRADE_COUNT }}" -eq 0 ]; then
             subject="✅ Personal Report - No packages need upgrade"
