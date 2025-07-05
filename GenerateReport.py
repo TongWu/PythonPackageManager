@@ -81,15 +81,18 @@ logger.propagate = False  # Avoid duplicate logs from root logger
 # ---------------- Utility Functions ----------------
 def main() -> None:
     """
-    Main entry point for generate weekly report workflow.
-
-    - Parses the requirements file.
-    - Fetches metadata and known vulnerabilities.
-    - Suggests upgrades and gathers dependency info.
-    - Outputs reports in selected formats (CSV, HTML, JSON).
-
-    Returns:
-        None
+    Generates a comprehensive weekly vulnerability and upgrade report for Python packages.
+    
+    This function orchestrates the end-to-end workflow for scanning Python dependencies, checking for known vulnerabilities, suggesting safe upgrades, and compiling detailed reports. It parses requirements, fetches PyPI metadata, analyzes dependencies, checks vulnerabilities asynchronously, and aggregates custodian and usage information. Reports are generated in CSV, HTML, JSON, and Excel formats, including specialized personal reports for vulnerable packages. The function also handles monthly summary report creation and enhanced HTML output for email notifications.
+    
+    The workflow includes:
+    - Parsing command-line arguments for output formats and base package list updates.
+    - Loading package lists, custodian mappings, and usage status.
+    - Gathering metadata, dependency, and vulnerability information for each package.
+    - Suggesting upgrades and generating upgrade instructions where applicable.
+    - Writing reports in multiple formats and generating summary statistics.
+    
+    No value is returned.
     """
     paths = get_report_paths()
     report_dir = get_report_output_folder()

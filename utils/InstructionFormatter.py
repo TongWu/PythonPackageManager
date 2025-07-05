@@ -6,7 +6,14 @@ from typing import Any, Mapping, Optional
 
 
 def instruction_to_text(instruction: Optional[Mapping[str, Any]]) -> str:
-    """Return a human-readable string from an upgrade instruction dict."""
+    """
+    Convert an upgrade instruction dictionary into a concise human-readable string.
+    
+    Returns an empty string if the instruction is missing or lacks a base package. If dependencies are present, lists them after the base package upgrade message; otherwise, only the base package upgrade is mentioned.
+    
+    Returns:
+        str: Human-readable upgrade instruction, or an empty string if input is invalid.
+    """
     if not instruction:
         return ""
     base_pkg = instruction.get("base_package", "")
@@ -22,7 +29,18 @@ def instruction_to_text(instruction: Optional[Mapping[str, Any]]) -> str:
 import json
 
 def instruction_to_detailed_text(instruction: Optional[Mapping[str, Any]], current_deps_json: str = "{}") -> str:
-    """Return a detailed human-readable string with dependency upgrade reasons."""
+    """
+    Generate a detailed human-readable description of an upgrade instruction, including reasons for dependency updates.
+    
+    If dependencies are present, compares each target dependency version with the current version (parsed from a JSON string). Marks dependencies as either upgrades from a known version or as new requirements. Returns a string summarizing the base package upgrade and detailed dependency updates. Returns an empty string if the instruction is missing or incomplete.
+    
+    Parameters:
+        instruction (Optional[Mapping[str, Any]]): The upgrade instruction containing at least a "base_package" key and optionally a "dependencies" list.
+        current_deps_json (str): A JSON string representing the current dependencies, expected to contain a "dependencies" list in the format ["package==version", ...].
+    
+    Returns:
+        str: A detailed upgrade summary, or an empty string if input is invalid.
+    """
     if not instruction:
         return ""
     
