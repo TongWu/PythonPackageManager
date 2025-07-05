@@ -440,9 +440,9 @@ def main() -> None:
                     current_deps_json = row.get('Current Version With Dependency JSON', '{}')
                     try:
                         current_deps_data = json.loads(current_deps_json)
-                        current_deps = {dep.split('==')[0]: dep.split('==')[1] if '==' in dep else 'unknown' 
-                                            for dep in current_deps_data.get('dependencies', []) if current_deps_data}
-                    except:
+                        current_deps = {dep.split('==')[0]: dep.split('==')[1] if '==' in dep else 'unknown'
+                                         for dep in current_deps_data.get('dependencies', []) if current_deps_data}
+                    except (json.JSONDecodeError, KeyError, AttributeError):
                         current_deps = {}
                     
                     # Get new version dependency requirements
