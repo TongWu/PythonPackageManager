@@ -1,7 +1,7 @@
 # Python Packages Manager
 
 [![Generate Report](https://github.com/TongWu/PythonPackageManager/actions/workflows/GenerateReport.yml/badge.svg)](https://github.com/TongWu/PythonPackageManager/actions/workflows/GenerateReport.yml)
-[![Generate Report (Dev)](https://github.com/TongWu/PythonPackageManager/actions/workflows/GenerateReport-Dev.yml/badge.svg)](https://github.com/TongWu/PythonPackageManager/actions/workflows/GenerateReport-Dev.yml)
+[![Generate Report (Dev)](https://github.com/TongWu/PythonPackageManager/actions/workflows/GenerateReport-Dev.yml/badge.svg?branch=dev)](https://github.com/TongWu/PythonPackageManager/actions/workflows/GenerateReport-Dev.yml)
 [![CodeQL](https://github.com/TongWu/PythonPackageManager/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/TongWu/PythonPackageManager/actions/workflows/github-code-scanning/codeql)
 [![Sync main to dev](https://github.com/TongWu/PythonPackageManager/actions/workflows/SyncMainToDev.yml/badge.svg)](https://github.com/TongWu/PythonPackageManager/actions/workflows/SyncMainToDev.yml)
 
