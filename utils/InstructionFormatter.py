@@ -19,6 +19,8 @@ def instruction_to_text(instruction: Optional[Mapping[str, Any]]) -> str:
     return f"Upgrade {base_pkg}"
 
 
+import json
+
 def instruction_to_detailed_text(instruction: Optional[Mapping[str, Any]], current_deps_json: str = "{}") -> str:
     """Return a detailed human-readable string with dependency upgrade reasons."""
     if not instruction:
@@ -31,12 +33,11 @@ def instruction_to_detailed_text(instruction: Optional[Mapping[str, Any]], curre
     deps = instruction.get("dependencies", []) or []
     
     # Parse current dependencies for comparison
-    import json
     try:
         current_deps_data = json.loads(current_deps_json)
         current_deps = {dep.split('==')[0]: dep.split('==')[1] if '==' in dep else 'unknown' 
                       for dep in current_deps_data.get('dependencies', []) if current_deps_data}
-    except:
+    except (json.JSONDecodeError, KeyError, AttributeError):
         current_deps = {}
     
     if deps:
@@ -46,7 +47,7 @@ def instruction_to_detailed_text(instruction: Optional[Mapping[str, Any]], curre
             dep_version = dep.split('==')[1] if '==' in dep else 'unknown'
             current_version = current_deps.get(dep_name, 'unknown')
             
-            if current_version != 'unknown' and current_version != dep_version:
+            if current_version not in ('unknown', dep_version):
                 dep_details.append(f"{dep} (upgrade from {current_version})")
             else:
                 dep_details.append(f"{dep} (new requirement)")
@@ -55,7 +56,6 @@ def instruction_to_detailed_text(instruction: Optional[Mapping[str, Any]], curre
         return f"Upgrade {base_pkg} and update dependencies: {dep_str}"
     
     return f"Upgrade {base_pkg}"
-
 
 if __name__ == "__main__":
     import json
