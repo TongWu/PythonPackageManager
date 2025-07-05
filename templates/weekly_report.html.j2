@@ -52,6 +52,22 @@
 </head>
 <body>
     <h2>Dependency Upgrade Report</h2>
+    
+    <!-- Filter controls above the table -->
+    <div id="filterControls" style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: #333;">Filter Options</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            {% for h in headers %}
+            <div>
+                <label for="filter-{{ loop.index }}" style="display: block; margin-bottom: 5px; font-weight: bold; color: #555;">{{ h }}:</label>
+                <select id="filter-{{ loop.index }}" class="filter-select" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">All</option>
+                </select>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
     <table id="reportTable">
         <thead>
             <tr>
@@ -60,13 +76,6 @@
                 {% endfor %}
             </tr>
         </thead>
-        <tfoot>
-            <tr>
-                {% for h in headers %}
-                <th>{{ h }}</th>
-                {% endfor %}
-            </tr>
-        </tfoot>
         <tbody>
         {% for row in rows %}
             <tr class="
@@ -93,17 +102,10 @@
             order: [[0, 'asc']]
         });
 
-        // select
-        $('#reportTable tfoot th').each(function() {
-            var title = $(this).text();
-            if (title !== '') {
-                $(this).html('<select><option value="">All</option></select>');
-            }
-        });
-
-        table.columns().every(function() {
+        // Populate filter dropdowns above the table
+        table.columns().every(function(index) {
             var column = this;
-            var select = $('select', column.footer());
+            var select = $('#filter-' + (index + 1));
 
             column.data().unique().sort().each(function(d, j) {
                 d = $('<div>').html(d).text();
