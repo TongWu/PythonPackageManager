@@ -200,6 +200,7 @@ jobs:
             --checkers=8 \
             --stats=10s \
             --no-update-modtime \
+            --drive-stop-on-upload-limit \
             2>&1)
           STATUS=$?
       
