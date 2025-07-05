@@ -420,6 +420,8 @@ def main() -> None:
                 suggested_ver = row.get('Suggested Upgrade', '')
                 vuln_details = row.get('Current Version Vulnerability Details', '')
                 print(f"🔍 DEBUG: Vulnerability details for {base_pkg}: {vuln_details[:200]}...")
+                print(f"🔍 DEBUG: Full vulnerability details length: {len(vuln_details)}")
+                print(f"🔍 DEBUG: Full vulnerability details: {vuln_details}")
                 
                 base_instr = instr.get('base_package', '')
                 deps = instr.get('dependencies', []) or []
@@ -502,8 +504,12 @@ def main() -> None:
                 # Write table rows
                 print(f"🔍 DEBUG: Writing table row {idx} with {len(dependency_rows)} dependency rows")
                 
-                # Format vulnerability details for HTML (replace newlines with <br>)
-                formatted_vuln_details = vuln_details.replace('\n', '<br>') if vuln_details else ''
+                # Format vulnerability details for HTML (replace newlines with <br> and escape HTML)
+                if vuln_details:
+                    # Replace newlines with <br> and escape HTML entities
+                    formatted_vuln_details = vuln_details.replace('\n', '<br>').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                else:
+                    formatted_vuln_details = ''
                 
                 if dependency_rows:
                     ef.write(f"<tr><td rowspan='{len(dependency_rows)}'>{idx}</td><td rowspan='{len(dependency_rows)}'>{custodian}</td><td rowspan='{len(dependency_rows)}'>{base_display}</td><td>{dependency_rows[0]}</td><td rowspan='{len(dependency_rows)}'>{formatted_vuln_details}</td></tr>\n")
