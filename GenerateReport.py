@@ -406,11 +406,13 @@ def main() -> None:
 
         # Save enhanced HTML table for email body with new requirements
         email_html_path = os.path.join(PERSONAL_REPORT_DIR, "PersonalReportEmail.html")
+        print(f"🔍 DEBUG: Generating email table with {len(PersonalReportRows)} rows")
         with open(email_html_path, "w", encoding="utf-8") as ef:
             ef.write("<table border='1' cellspacing='0' cellpadding='4'>\n")
             ef.write("<tr><th>S/N</th><th>Custodian</th><th>Base Package</th><th>Dependency Packages</th><th>Vulnerability Details</th></tr>\n")
             
             for idx, row in enumerate(PersonalReportRows, 1):
+                print(f"🔍 DEBUG: Processing row {idx}: {row.get('Package Name', 'Unknown')}")
                 instr = row.get('Upgrade Instruction') or {}
                 custodian = row.get('Custodian', '')
                 base_pkg = row.get('Package Name', '')
@@ -481,6 +483,7 @@ def main() -> None:
                     dependency_rows.append("-")
 
                 # Write table rows
+                print(f"🔍 DEBUG: Writing table row {idx} with {len(dependency_rows)} dependency rows")
                 if dependency_rows:
                     ef.write(f"<tr><td rowspan='{len(dependency_rows)}'>{idx}</td><td rowspan='{len(dependency_rows)}'>{custodian}</td><td rowspan='{len(dependency_rows)}'>{base_display}</td><td>{dependency_rows[0]}</td><td rowspan='{len(dependency_rows)}'>{vuln_details}</td></tr>\n")
                     for dep_row in dependency_rows[1:]:
