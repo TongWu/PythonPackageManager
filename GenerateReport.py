@@ -442,7 +442,9 @@ def main() -> None:
                 dependency_rows = []
                 if deps:
                     # Get current dependency info for comparison
-                    current_deps_json = row.get('Current Version With Dependency JSON', '{}')
+                    current_deps_json = row.get('Current Version With Dependency JSON')
+                    if current_deps_json is None:
+                        current_deps_json = '{}'
                     try:
                         current_deps_data = json.loads(current_deps_json)
                         current_deps = {dep.split('==')[0]: dep.split('==')[1] if '==' in dep else 'unknown'
@@ -454,10 +456,18 @@ def main() -> None:
                     new_version_deps = row.get('Dependencies for Latest', '')
                     new_version_deps_list = [dep.strip() for dep in new_version_deps.split(';') if dep.strip()]
                     
+                    # Get all installed packages for comparison
+                    all_installed_packages = set()
+                    for pkg_row in rows:
+                        all_installed_packages.add(pkg_row.get('Package Name', '').lower())
+                    
                     for dep in deps:
                         dep_name = dep.split('==')[0] if '==' in dep else dep
                         dep_version = dep.split('==')[1] if '==' in dep else 'unknown'
                         current_version = current_deps.get(dep_name, 'unknown')
+                        
+                        # Check if this is a new package not in the installed list
+                        is_new_package = dep_name.lower() not in all_installed_packages
                         
                         # Find the new version requirement for this dependency
                         new_version_req = "unknown"
@@ -469,16 +479,22 @@ def main() -> None:
                                 new_version_req = new_dep
                                 break
                         
-                        # Determine upgrade reason
-                        reason = "Dependency requirement change"
-                        if current_version != 'unknown' and current_version != dep_version:
-                            reason = f"Version upgrade required: {current_version} → {dep_version}"
-                        
-                        # Enhanced display with new version requirements
-                        if new_version_req != "unknown":
-                            dependency_rows.append(f"{dep} (Reason: {reason}, New version requires: {new_version_req})")
+                        # Determine upgrade reason and format display
+                        if is_new_package:
+                            reason = "NEW PACKAGE - Not in current installation"
+                            if new_version_req != "unknown":
+                                dependency_rows.append(f"{dep} (NEW PACKAGE - Base package requires: {new_version_req}, Suggested safe version: {dep_version})")
+                            else:
+                                dependency_rows.append(f"{dep} (NEW PACKAGE - Suggested safe version: {dep_version})")
                         else:
-                            dependency_rows.append(f"{dep} (Reason: {reason})")
+                            reason = "Dependency requirement change"
+                            if current_version != 'unknown' and current_version != dep_version:
+                                reason = f"Version upgrade required: {current_version} → {dep_version}"
+                            
+                            if new_version_req != "unknown":
+                                dependency_rows.append(f"{dep} (Reason: {reason}, Base package requires: {new_version_req})")
+                            else:
+                                dependency_rows.append(f"{dep} (Reason: {reason})")
                 else:
                     dependency_rows.append("-")
 
