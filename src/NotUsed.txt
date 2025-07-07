@@ -13,3 +13,4 @@ torch
 transformers
 Werkzeug
 llama-index-cli
+pillow
