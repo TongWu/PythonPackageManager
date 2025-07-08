@@ -5,11 +5,9 @@
 [![CodeQL](https://github.com/TongWu/PythonPackageManager/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/TongWu/PythonPackageManager/actions/workflows/github-code-scanning/codeql)
 [![Sync main to dev](https://github.com/TongWu/PythonPackageManager/actions/workflows/SyncMainToDev.yml/badge.svg)](https://github.com/TongWu/PythonPackageManager/actions/workflows/SyncMainToDev.yml)
 
-A comprehensive, self-hosted solution for automated Python dependency management, vulnerability scanning, upgrade recommendations, and compliance reporting. Designed for teams and organizations seeking regular, auditable, and actionable insights into their Python project dependencies.
-
-The repo is now available in DeepWiki.
-
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/TongWu/PythonPackageManager)
+
+A comprehensive, self-hosted solution for automated Python dependency management, vulnerability scanning, upgrade recommendations, and compliance reporting. Designed for teams and organizations seeking regular, auditable, and actionable insights into their Python project dependencies.
 
 ---
 
