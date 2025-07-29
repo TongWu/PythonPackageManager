@@ -415,32 +415,43 @@ jobs:
         id: find_latest
         run: |
           echo "📁 Scanning for latest report set..."
-          latest_json=$(find WeeklyReport -type f -name "WeeklyReport_*.json" | \
-            sed -E 's/\.json$//' | \
-            sort -t '_' -k2 | \
-            tail -n 1).json
 
-          if [[ -z "$latest_json" || ! -f "$latest_json" ]]; then
-            echo "❌ No valid JSON report found."
+          latest_csv=$(find WeeklyReport -type f -name "WeeklyReport_*.csv" | sort | tail -n 1)
+
+          if [[ -z "$latest_csv" || ! -f "$latest_csv" ]]; then
+            echo "❌ No weekly CSV report found."
             exit 1
           fi
 
-          base_name="${latest_json%.json}"
-          csv_file="${base_name}.csv"
+          base_name="${latest_csv%.csv}"
           html_file="${base_name}.html"
+          json_file="${base_name}.json"
 
           echo "📝 Latest base: $base_name"
-          echo "📄 CSV:  $csv_file"
+          echo "📄 CSV:  $latest_csv"
           echo "📄 HTML: $html_file"
-          echo "📄 JSON: $latest_json"
+          echo "📄 JSON: $json_file"
 
-          echo "CSV_PATH=$csv_file" >> $GITHUB_ENV
-          echo "HTML_PATH=$html_file" >> $GITHUB_ENV
-          echo "JSON_PATH=$latest_json" >> $GITHUB_ENV
+          echo "CSV_PATH=$latest_csv" >> $GITHUB_ENV
+          echo "CSV_FILENAME=$(basename \"$latest_csv\")" >> $GITHUB_ENV
 
-          echo "CSV_FILENAME=$(basename "$csv_file")" >> $GITHUB_ENV
-          echo "HTML_FILENAME=$(basename "$html_file")" >> $GITHUB_ENV
-          echo "JSON_FILENAME=$(basename "$latest_json")" >> $GITHUB_ENV
+          if [[ -f "$html_file" ]]; then
+            echo "HTML_PATH=$html_file" >> $GITHUB_ENV
+            echo "HTML_FILENAME=$(basename \"$html_file\")" >> $GITHUB_ENV
+          else
+            echo "⚠️ HTML report not found: $html_file"
+            echo "HTML_PATH=" >> $GITHUB_ENV
+            echo "HTML_FILENAME=" >> $GITHUB_ENV
+          fi
+
+          if [[ -f "$json_file" ]]; then
+            echo "JSON_PATH=$json_file" >> $GITHUB_ENV
+            echo "JSON_FILENAME=$(basename \"$json_file\")" >> $GITHUB_ENV
+          else
+            echo "⚠️ JSON report not found: $json_file"
+            echo "JSON_PATH=" >> $GITHUB_ENV
+            echo "JSON_FILENAME=" >> $GITHUB_ENV
+          fi
 
           # 🗓️ Get the Monday of current week
           MONDAY_DATE=$(date -d "$(date +%Y-%m-%d -d @$(( $(date +%s) - ($(date +%u) - 1) * 86400 )))" +%Y-%m-%d)
@@ -474,10 +485,16 @@ jobs:
         run: |
           gh release create "$RELEASE_TAG" \
             "$CSV_PATH#${CSV_FILENAME}" \
-            "$HTML_PATH#${HTML_FILENAME}" \
-            "$JSON_PATH#${JSON_FILENAME}" \
             --title "Weekly Report - $MONDAY_DATE_DISPLAY (Generated at $GENERATED_DATE)" \
             --notes "Automated weekly report"
+
+          if [[ -n "$HTML_PATH" ]]; then
+            gh release upload "$RELEASE_TAG" "$HTML_PATH#${HTML_FILENAME}" --clobber
+          fi
+
+          if [[ -n "$JSON_PATH" ]]; then
+            gh release upload "$RELEASE_TAG" "$JSON_PATH#${JSON_FILENAME}" --clobber
+          fi
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
 
