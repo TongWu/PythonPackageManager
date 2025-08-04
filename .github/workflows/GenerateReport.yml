@@ -293,14 +293,14 @@ jobs:
         run: |
           git init
           git remote add origin https://github.com/${{ github.repository }}
-          git fetch origin dev
-          git checkout origin/dev
+          git fetch origin main
+          git checkout origin/main
 
       - name: Find latest monthly report
         id: find_latest_monthly
         run: |
           echo "🔍 Scanning for latest MonthlyReport..."
-          latest_file=$(find MonthlyReport -type f -name "MonthlyReport-*.xlsx" | sort | tail -n 1)
+          latest_file=$(find MonthlyReport -type f -name "MonthlyReport-*.xlsx" -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-)
 
           if [[ -z "$latest_file" || ! -f "$latest_file" ]]; then
             echo "❌ No monthly report found."
@@ -309,7 +309,7 @@ jobs:
 
           echo "✅ Found: $latest_file"
 
-          filename=$(basename "$latest_file")
+          filename=$(basename $latest_file)
           year_month=$(echo "$filename" | grep -oP '(?<=MonthlyReport-)[0-9]{6}')
 
           # Format month for display (e.g., "Jul 2025")
@@ -408,15 +408,15 @@ jobs:
         run: |
           git init
           git remote add origin https://github.com/${{ github.repository }}
-          git fetch origin dev
-          git checkout origin/dev
+          git fetch origin main
+          git checkout origin/main
 
       - name: Find latest report set
         id: find_latest
         run: |
           echo "📁 Scanning for latest report set..."
 
-          latest_csv=$(find WeeklyReport -type f -name "WeeklyReport_*.csv" | sort | tail -n 1)
+          latest_csv=$(find WeeklyReport -type f -name "WeeklyReport_*.csv" -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-)
 
           if [[ -z "$latest_csv" || ! -f "$latest_csv" ]]; then
             echo "❌ No weekly CSV report found."
@@ -433,11 +433,11 @@ jobs:
           echo "📄 JSON: $json_file"
 
           echo "CSV_PATH=$latest_csv" >> $GITHUB_ENV
-          echo "CSV_FILENAME=$(basename \"$latest_csv\")" >> $GITHUB_ENV
+          echo "CSV_FILENAME=$(basename $latest_csv)" >> $GITHUB_ENV
 
           if [[ -f "$html_file" ]]; then
             echo "HTML_PATH=$html_file" >> $GITHUB_ENV
-            echo "HTML_FILENAME=$(basename \"$html_file\")" >> $GITHUB_ENV
+            echo "HTML_FILENAME=$(basename $html_file)" >> $GITHUB_ENV
           else
             echo "⚠️ HTML report not found: $html_file"
             echo "HTML_PATH=" >> $GITHUB_ENV
@@ -446,7 +446,7 @@ jobs:
 
           if [[ -f "$json_file" ]]; then
             echo "JSON_PATH=$json_file" >> $GITHUB_ENV
-            echo "JSON_FILENAME=$(basename \"$json_file\")" >> $GITHUB_ENV
+            echo "JSON_FILENAME=$(basename $json_file)" >> $GITHUB_ENV
           else
             echo "⚠️ JSON report not found: $json_file"
             echo "JSON_PATH=" >> $GITHUB_ENV
