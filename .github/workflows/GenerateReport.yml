@@ -433,11 +433,11 @@ jobs:
           echo "📄 JSON: $json_file"
 
           echo "CSV_PATH=$latest_csv" >> $GITHUB_ENV
-          echo "CSV_FILENAME=$(basename \"$latest_csv\")" >> $GITHUB_ENV
+          echo "CSV_FILENAME=$(basename "$latest_csv")" >> $GITHUB_ENV
 
           if [[ -f "$html_file" ]]; then
             echo "HTML_PATH=$html_file" >> $GITHUB_ENV
-            echo "HTML_FILENAME=$(basename \"$html_file\")" >> $GITHUB_ENV
+            echo "HTML_FILENAME=$(basename "$html_file")" >> $GITHUB_ENV
           else
             echo "⚠️ HTML report not found: $html_file"
             echo "HTML_PATH=" >> $GITHUB_ENV
@@ -446,23 +446,24 @@ jobs:
 
           if [[ -f "$json_file" ]]; then
             echo "JSON_PATH=$json_file" >> $GITHUB_ENV
-            echo "JSON_FILENAME=$(basename \"$json_file\")" >> $GITHUB_ENV
+            echo "JSON_FILENAME=$(basename "$json_file")" >> $GITHUB_ENV
           else
             echo "⚠️ JSON report not found: $json_file"
             echo "JSON_PATH=" >> $GITHUB_ENV
             echo "JSON_FILENAME=" >> $GITHUB_ENV
           fi
 
-          # 🗓️ Get the Monday of current week
-          MONDAY_DATE=$(date -d "$(date +%Y-%m-%d -d @$(( $(date +%s) - ($(date +%u) - 1) * 86400 )))" +%Y-%m-%d)
-          echo "📅 This week's Monday: $MONDAY_DATE"
+          # 🗓️ Extract the report date from the filename
+          file_date=$(basename "$latest_csv" | grep -oP '(?<=WeeklyReport_)[0-9]{8}')
+          MONDAY_DATE=$(date -d "$file_date" +%Y-%m-%d)
+          echo "📅 Report date: $MONDAY_DATE"
 
           # Get current date for "Generated at" part (SGT timezone)
           export TZ="Asia/Singapore"
           generated_date=$(date '+%Y-%m-%d %H:%M:%S SGT')
 
-          # 🔍 Find existing tags in this week and determine Ver{x}
-          existing_tags=$(gh release list --limit 100 --json tagName | jq -r ".[] | .tagName" | grep -E "^weekly-${MONDAY_DATE//-}-Ver[0-9]+$" || true)
+          # 🔍 Find existing tags for this report date and determine Ver{x}
+          existing_tags=$(gh release list --limit 100 --json tagName | jq -r ".[] | .tagName" | grep -E "^weekly-${file_date}-Ver[0-9]+$" || true)
           max_ver=$(echo "$existing_tags" | grep -oE 'Ver[0-9]+' | sed 's/Ver//' | sort -n | tail -n 1)
 
           if [[ -z "$max_ver" ]]; then
@@ -471,7 +472,7 @@ jobs:
             new_ver=$((max_ver + 1))
           fi
 
-          tag="weekly-${MONDAY_DATE//-}-Ver${new_ver}"
+          tag="weekly-${file_date}-Ver${new_ver}"
           echo "🆕 Release tag: $tag"
 
           echo "RELEASE_TAG=$tag" >> $GITHUB_ENV
