@@ -293,8 +293,8 @@ jobs:
         run: |
           git init
           git remote add origin https://github.com/${{ github.repository }}
-          git fetch origin dev
-          git checkout origin/dev
+          git fetch origin main
+          git checkout origin/main
 
       - name: Find latest monthly report
         id: find_latest_monthly
@@ -408,8 +408,8 @@ jobs:
         run: |
           git init
           git remote add origin https://github.com/${{ github.repository }}
-          git fetch origin dev
-          git checkout origin/dev
+          git fetch origin main
+          git checkout origin/main
 
       - name: Find latest report set
         id: find_latest
