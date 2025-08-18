@@ -15,3 +15,6 @@ Werkzeug
 llama-index-cli
 pillow
 llama-index-core
+litestar
+future
+pypdf
