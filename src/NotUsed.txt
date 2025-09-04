@@ -18,3 +18,4 @@ llama-index-core
 litestar
 future
 pypdf
+deepdiff
