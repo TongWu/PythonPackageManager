@@ -133,6 +133,82 @@ async def suggest_safe_minor_upgrade(
         return "unknown"
 
 
+async def find_latest_safe_version_for_major(
+    pkg: str,
+    current_version: str,
+    all_versions: list[str],
+    target_major: int,
+) -> str | None:
+    """Return the newest vulnerability-free version within ``target_major``.
+
+    The candidate list is restricted to the specified major version. When the
+    target major matches the current version's major, only versions greater
+    than or equal to the current version are evaluated to avoid unnecessary
+    downgrades.  The function iterates from the newest candidate backwards and
+    returns the first version confirmed to be free of known vulnerabilities.
+
+    Parameters
+    ----------
+    pkg:
+        Package name on PyPI.
+    current_version:
+        Currently installed version string.  Used to filter out downgrades
+        when ``target_major`` equals the current major release.
+    all_versions:
+        Collection of available release versions (string representation).
+    target_major:
+        Major version number that should be evaluated.
+
+    Returns
+    -------
+    str | None
+        The newest vulnerability-free version string within the selected
+        major. ``None`` if no suitable release could be found or validated.
+    """
+
+    try:
+        cur_ver = version.parse(current_version)
+    except InvalidVersion:
+        cur_ver = None
+
+    candidates: list[tuple[version.Version, str]] = []
+    for ver_str in all_versions:
+        try:
+            parsed = version.parse(ver_str)
+        except InvalidVersion:
+            continue
+
+        if parsed.major != target_major:
+            continue
+
+        if cur_ver and parsed.major == cur_ver.major and parsed < cur_ver:
+            # Skip downgrades within the same major release
+            continue
+
+        candidates.append((parsed, ver_str))
+
+    if not candidates:
+        return None
+
+    candidates.sort(reverse=True, key=lambda item: item[0])
+
+    async with aiohttp.ClientSession() as session:
+        sem = asyncio.Semaphore(5)
+        for _, ver_str in candidates:
+            try:
+                _, status, _ = await fetch_osv(session, pkg, ver_str, sem)
+            except Exception as exc:  # pragma: no cover - network safety
+                logger.warning(
+                    f"Failed to verify vulnerabilities for {pkg}=={ver_str}: {exc}"
+                )
+                continue
+
+            if status == "No":
+                return ver_str
+
+    return None
+
+
 def main():
     """
     Parses command-line arguments and suggests upgrade versions for a specified Python package.
