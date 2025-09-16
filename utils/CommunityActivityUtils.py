@@ -23,6 +23,12 @@ from functools import lru_cache
 from typing import Iterable, Optional, Tuple
 from urllib.parse import urlparse
 
+import json
+import hashlib
+from time import sleep
+from pathlib import Path
+from random import random
+
 import requests
 from packaging.version import InvalidVersion, Version
 from dotenv import load_dotenv
@@ -48,6 +54,36 @@ _GITHUB_HEADERS = {
     "Accept": "application/vnd.github+json",
     "User-Agent": "PythonPackageManager/CommunityActivityUtils",
 }
+
+# --- Simple persistent cache for ETags & JSON payloads (file-based) ---
+_CACHE_PATH = Path(".gh_api_cache.json")
+try:
+    _ETAG_CACHE = json.loads(_CACHE_PATH.read_text(encoding="utf-8"))
+except Exception:
+    _ETAG_CACHE = {}  # {key: {"etag": "...", "last_modified": "...", "payload": {...}, "fetched_at": "..."}}
+
+def _cache_key(url: str, params: Optional[dict]) -> str:
+    """Stable key for (url, sorted params)."""
+    h = hashlib.sha256()
+    h.update(url.encode("utf-8"))
+    if params:
+        h.update(json.dumps(params, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+    return h.hexdigest()
+
+def _cache_get(key: str):
+    return _ETAG_CACHE.get(key)
+
+def _cache_put(key: str, etag: Optional[str], last_mod: Optional[str], payload: Optional[object]):
+    _ETAG_CACHE[key] = {
+        "etag": etag,
+        "last_modified": last_mod,
+        "payload": payload,
+        "fetched_at": datetime.now(timezone.utc).isoformat()
+    }
+    try:
+        _CACHE_PATH.write_text(json.dumps(_ETAG_CACHE), encoding="utf-8")
+    except Exception:
+        pass
 
 if _GITHUB_TOKEN:
     _GITHUB_HEADERS["Authorization"] = f"Bearer {_GITHUB_TOKEN}"
@@ -322,6 +358,12 @@ def _get_repo_last_activity(repo_url: Optional[str]) -> Optional[datetime]:
     if not full_name:
         return None
 
+    # 1) Try GraphQL single-shot query first (fewer requests)
+    gql_ts = _github_graphql_repo_activity(full_name)
+    if gql_ts:
+        return gql_ts
+
+    # 2) Fallback to REST: /repos/{full_name} + last updated issue
     metadata = _github_get(f"/repos/{full_name}")
     if not metadata:
         return None
@@ -334,9 +376,8 @@ def _get_repo_last_activity(repo_url: Optional[str]) -> Optional[datetime]:
     if issues_timestamp:
         timestamps.append(issues_timestamp)
 
-    activity_timestamp = _max_datetime(*timestamps)
-    return activity_timestamp
-
+    return _max_datetime(*timestamps)
+   
 
 def _get_latest_issue_update(full_name: str) -> Optional[datetime]:
     response = _github_get(
@@ -349,31 +390,182 @@ def _get_latest_issue_update(full_name: str) -> Optional[datetime]:
 
     return None
 
+def _github_graphql_repo_activity(full_name: str) -> Optional[datetime]:
+    """
+    Query GitHub GraphQL v4 for repository activity in a single request.
+    Fields: repository.pushedAt, repository.updatedAt, last issue updatedAt.
+    Falls back to None on errors; caller may try REST path.
+    """
+    if not _GITHUB_TOKEN:
+        return None  # GraphQL requires auth
 
-def _github_get(path: str, params: Optional[dict] = None) -> Optional[object]:
-    url = f"{_GITHUB_API}{path}"
+    # Prepare GraphQL endpoint and headers
+    gql_url = f"{_GITHUB_API.replace('api.', '')}/graphql"
+    headers = {
+        "Authorization": f"Bearer {_GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": _GITHUB_HEADERS.get("User-Agent", "Python"),
+    }
+
     try:
-        resp = _SESSION.get(url, headers=_GITHUB_HEADERS, params=params, timeout=10)
-    except requests.RequestException as exc:
-        logger.warning("GitHub request to %s failed: %s", url, exc)
+        owner, repo = full_name.split("/", 1)
+    except ValueError:
         return None
 
-    if resp.status_code == 403 and resp.headers.get('X-RateLimit-Remaining') == '0':
-        reset = resp.headers.get('X-RateLimit-Reset')
-        logger.warning("GitHub rate limit exceeded. Reset epoch: %s", reset)
-        return None
+    # GraphQL query: one hop for activity
+    query = """
+    query($owner: String!, $name: String!) {
+      rateLimit {
+        limit
+        remaining
+        resetAt
+        cost
+      }
+      repository(owner: $owner, name: $name) {
+        pushedAt
+        updatedAt
+        issues(first: 1, orderBy: {field: UPDATED_AT, direction: DESC}, states: [OPEN, CLOSED]) {
+          nodes { updatedAt }
+        }
+      }
+    }
+    """
+    variables = {"owner": owner, "name": repo}
 
-    if resp.status_code >= 400:
-        logger.debug("GitHub request to %s returned status %s", url, resp.status_code)
-        return None
+    # Backoff loop for secondary rate limit on GraphQL
+    max_retries = 5
+    backoff = 2.0
 
-    if resp.headers.get('Content-Type', '').startswith('application/json'):
+    for attempt in range(max_retries):
         try:
-            return resp.json()
+            resp = _SESSION.post(gql_url, headers=headers, json={"query": query, "variables": variables}, timeout=12)
+        except requests.RequestException as exc:
+            logger.warning("GitHub GraphQL request failed: %s", exc)
+            sleep(backoff * (1 + random()))
+            backoff = min(backoff * 2, 600)
+            continue
+
+        # GraphQL uses 200 even for errors; inspect body
+        if resp.status_code in (403, 429):
+            ra = resp.headers.get("Retry-After")
+            wait_sec = int(ra) if ra and ra.isdigit() else max(60, int(backoff))
+            logger.warning("GraphQL secondary rate limit. Sleeping %ss", wait_sec)
+            sleep(wait_sec)
+            backoff = min(backoff * 2, 600)
+            continue
+
+        try:
+            body = resp.json()
         except ValueError:
-            logger.debug("Failed to decode GitHub JSON response from %s", url)
+            logger.debug("Failed to parse GraphQL JSON")
             return None
 
+        if "errors" in body and body["errors"]:
+            # For example: abuse detection mechanism, rate limits, not found, etc.
+            # Respect potential rate limit hints
+            logger.debug("GraphQL errors: %s", body["errors"])
+            sleep(backoff * (1 + random()))
+            backoff = min(backoff * 2, 600)
+            continue
+
+        repo_node = body.get("data", {}).get("repository")
+        if not repo_node:
+            return None
+
+        ts = []
+        ts.append(_parse_iso_datetime(repo_node.get("pushedAt")))
+        ts.append(_parse_iso_datetime(repo_node.get("updatedAt")))
+        issues = repo_node.get("issues", {}).get("nodes") or []
+        if issues:
+            ts.append(_parse_iso_datetime(issues[0].get("updatedAt")))
+        return _max_datetime(*ts)
+
     return None
+
+def _github_get(path: str, params: Optional[dict] = None) -> Optional[object]:
+    """GET GitHub REST v3 with ETag/Last-Modified caching and polite backoff."""
+    url = f"{_GITHUB_API}{path}"
+    key = _cache_key(url, params)
+
+    # Build headers and attach conditional validators from cache
+    headers = dict(_GITHUB_HEADERS)
+    cached = _cache_get(key)
+    if cached:
+        if cached.get("etag"):
+            headers["If-None-Match"] = cached["etag"]
+        elif cached.get("last_modified"):
+            headers["If-Modified-Since"] = cached["last_modified"]
+
+    max_retries = 5
+    backoff = 2.0  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            resp = _SESSION.get(url, headers=headers, params=params, timeout=10)
+        except requests.RequestException as exc:
+            logger.warning("GitHub request to %s failed: %s", url, exc)
+            sleep(backoff * (1 + random()))
+            backoff = min(backoff * 2, 600)
+            continue
+
+        status = resp.status_code
+
+        # Handle primary & secondary rate limits
+        if status in (403, 429):
+            # Primary limit exhausted: wait until reset
+            if resp.headers.get("X-RateLimit-Remaining") == "0":
+                reset = resp.headers.get("X-RateLimit-Reset")
+                try:
+                    reset_ts = int(reset)
+                    wait_sec = max(0, reset_ts - int(datetime.now(timezone.utc).timestamp())) + 1
+                except Exception:
+                    wait_sec = 60
+                logger.warning("Primary rate limit hit. Waiting %ss until reset.", wait_sec)
+                sleep(wait_sec)
+                continue
+
+            # Secondary limit: honor Retry-After if present
+            ra = resp.headers.get("Retry-After")
+            if ra:
+                try:
+                    wait_sec = int(ra)
+                except ValueError:
+                    wait_sec = 60
+                logger.warning("Secondary rate limit. Retry-After=%ss", wait_sec)
+                sleep(wait_sec)
+                continue
+
+            # Fallback: exponential backoff with jitter
+            wait_sec = max(60, int(backoff))
+            logger.warning("Secondary rate limit (no headers). Sleeping %ss", wait_sec)
+            sleep(wait_sec)
+            backoff = min(backoff * 2, 600)
+            continue
+
+        if status == 304 and cached:
+            # 304 does not count against primary rate limit; return cached payload
+            new_etag = resp.headers.get("ETag") or cached.get("etag")
+            new_lm = resp.headers.get("Last-Modified") or cached.get("last_modified")
+            _cache_put(key, new_etag, new_lm, cached.get("payload"))
+            return cached.get("payload")
+
+        if status >= 400:
+            logger.debug("GitHub request to %s returned status %s", url, status)
+            return None
+
+        if resp.headers.get('Content-Type', '').startswith('application/json'):
+            try:
+                data = resp.json()
+            except ValueError:
+                logger.debug("Failed to decode GitHub JSON response from %s", url)
+                return None
+            _cache_put(key, resp.headers.get("ETag"), resp.headers.get("Last-Modified"), data)
+            return data
+
+        return None  # Non-JSON unexpected
+
+    logger.warning("GitHub request to %s exhausted retries due to rate limiting.", url)
+    return None
+
 
 
