@@ -37,7 +37,8 @@ from utils.PyPiUtils import (
     GetPyPiInfo
 )
 from utils.VersionSuggester import (
-    suggest_safe_minor_upgrade
+    suggest_safe_minor_upgrade,
+    find_latest_safe_version_for_major
 )
 from utils.VulnChecker import (
     check_cv_uv
@@ -219,6 +220,59 @@ def main() -> None:
             else:
                 instruction = generate_upgrade_instruction(pkg, suggested)
 
+        outdated_instruction = None
+        outdated_target_version = None
+
+        try:
+            cur_ver_obj = version.parse(cur_ver)
+        except InvalidVersion:
+            cur_ver_obj = None
+
+        if cur_ver_obj and all_vs:
+            available_majors = sorted({version.parse(v).major for v in all_vs})
+            if available_majors:
+                latest_major_available = available_majors[-1]
+                if cur_ver_obj.major == latest_major_available:
+                    target_major = cur_ver_obj.major
+                else:
+                    lower_majors = [m for m in available_majors if m < latest_major_available]
+                    target_major = lower_majors[-1] if lower_majors else cur_ver_obj.major
+                    if target_major < cur_ver_obj.major:
+                        target_major = cur_ver_obj.major
+
+                if (
+                    target_major in available_majors
+                    and not (target_major == cur_ver_obj.major and not newer)
+                ):
+                    try:
+                        outdated_target_version = asyncio.run(
+                            find_latest_safe_version_for_major(
+                                pkg, cur_ver, all_vs, target_major
+                            )
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to compute outdated-oriented upgrade for {pkg}: {e}"
+                        )
+
+                if (
+                    outdated_target_version
+                    and outdated_target_version != cur_ver
+                ):
+                    try:
+                        outdated_instruction = generate_upgrade_instruction(
+                            pkg, outdated_target_version
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to generate outdated-oriented instruction for "
+                            f"{pkg}=={outdated_target_version}: {e}"
+                        )
+                        outdated_instruction = {
+                            "base_package": f"{pkg}=={outdated_target_version}",
+                            "dependencies": []
+                        }
+
         # Current version dependency JSON (only for base packages)
         if pkg.lower() in base_packages:
             current_json = generate_current_dependency_json(pkg, cur_ver, cur_ver_deps)
@@ -260,6 +314,7 @@ def main() -> None:
             'Upgrade Vulnerability Details': upgrade_vuln_details,
             'Suggested Upgrade': suggested,
             'Upgrade Instruction': instruction,
+            'Outdated-oriented Upgrade Instruction': outdated_instruction,
             'Remarks': Remarks
         })
         logger.debug(f"Custodian for {pkg}: {custodian}")
@@ -327,7 +382,7 @@ def main() -> None:
         'Latest Version', 'Last Active Date for current major version', 'Last active date for package',
         'Current Version Vulnerable?', 'Current Version Vulnerability Details',
         'Upgrade Version Vulnerable?', 'Upgrade Vulnerability Details',
-        'Suggested Upgrade', 'Remarks'
+        'Suggested Upgrade', 'Outdated-oriented Upgrade Instruction', 'Remarks'
     ]]
     # Overview Sheet
     total_packages = len(monthly_df)
