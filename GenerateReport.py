@@ -42,6 +42,9 @@ from utils.VersionSuggester import (
 from utils.VulnChecker import (
     check_cv_uv
 )
+from utils.CommunityActivityUtils import (
+    get_activity_dates
+)
 from utils.SGTUtils import (
     SGTFormatter,
     now_sg
@@ -236,6 +239,8 @@ def main() -> None:
         # Mark for Not Used Packages
         Remarks = "Not Used" if pkg.lower() in NotUsedPackages else ""
 
+        last_active_current_major, last_active_package = get_activity_dates(pkg, cur_ver, info)
+
         rows.append({
             'Package Name': pkg,
             'Package Type': 'Base Package' if pkg.lower() in base_packages else 'Dependency Package',
@@ -247,6 +252,8 @@ def main() -> None:
             'Newer Versions': ', '.join(newer),
             'Dependencies for Latest': '; '.join(deps),
             'Latest Version': latest,
+            'Last Active Date for current major version': last_active_current_major,
+            'Last active date for package': last_active_package,
             'Current Version Vulnerable?': cv_status,
             'Current Version Vulnerability Details': cv_details,
             'Upgrade Version Vulnerable?': upgrade_vuln,
@@ -317,7 +324,8 @@ def main() -> None:
     monthly_df = pd.DataFrame(rows)[[
         'Package Name', 'Package Type', 'Custodian', 'Current Version',
         'Dependencies for Current', 'Newer Versions', 'Dependencies for Latest',
-        'Latest Version', 'Current Version Vulnerable?', 'Current Version Vulnerability Details',
+        'Latest Version', 'Last Active Date for current major version', 'Last active date for package',
+        'Current Version Vulnerable?', 'Current Version Vulnerability Details',
         'Upgrade Version Vulnerable?', 'Upgrade Vulnerability Details',
         'Suggested Upgrade', 'Remarks'
     ]]
