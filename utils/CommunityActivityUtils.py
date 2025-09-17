@@ -282,21 +282,32 @@ def _max_datetime(*values: Optional[datetime]) -> Optional[datetime]:
     return max(present)
 
 
+def _is_github_host(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        hostname = hostname.lower()
+        return hostname == "github.com" or hostname.endswith(".github.com")
+    except Exception:
+        return False
+
 def _extract_github_repo(pypi_info: dict) -> Optional[str]:
     info = pypi_info.get('info', {}) or {}
     candidates = []
 
     project_urls = info.get('project_urls') or {}
     for url in project_urls.values():
-        if isinstance(url, str) and 'github.com' in url.lower():
+        if isinstance(url, str) and _is_github_host(url):
             candidates.append(url)
 
     home_page = info.get('home_page')
-    if isinstance(home_page, str) and 'github.com' in home_page.lower():
+    if isinstance(home_page, str) and _is_github_host(home_page):
         candidates.append(home_page)
 
     bugtrack_url = info.get('bugtrack_url')
-    if isinstance(bugtrack_url, str) and 'github.com' in bugtrack_url.lower():
+    if isinstance(bugtrack_url, str) and _is_github_host(bugtrack_url):
         candidates.append(bugtrack_url)
 
     for url in candidates:
