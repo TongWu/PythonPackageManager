@@ -317,7 +317,8 @@ def main() -> None:
     monthly_df = pd.DataFrame(rows)[[
         'Package Name', 'Package Type', 'Custodian', 'Current Version',
         'Dependencies for Current', 'Newer Versions', 'Dependencies for Latest',
-        'Latest Version', 'Current Version Vulnerable?', 'Current Version Vulnerability Details',
+        'Latest Version',
+        'Current Version Vulnerable?', 'Current Version Vulnerability Details',
         'Upgrade Version Vulnerable?', 'Upgrade Vulnerability Details',
         'Suggested Upgrade', 'Remarks'
     ]]
