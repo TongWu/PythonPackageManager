@@ -19,3 +19,4 @@ litestar
 future
 pypdf
 deepdiff
+pip
