@@ -20,3 +20,4 @@ future
 pypdf
 deepdiff
 pip
+langchain-text-splitters
