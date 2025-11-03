@@ -65,7 +65,7 @@ binaryornot==0.4.4
 black==24.4.2
 bleach==6.1.0
 blinker==1.8.2
-blis==1.0.1
+blis==0.9.1
 boilerpy3==1.0.7
 bs4==0.0.2
 build==1.2.2.post1
@@ -592,7 +592,7 @@ weasel==0.4.1
 webcolors==24.8.0
 webencodings==0.5.1
 websocket-client==1.8.0
-websockets==13.1
+websockets==14.2
 Werkzeug==3.0.4
 wheel==0.44.0
 widgetsnbextension==4.0.13
