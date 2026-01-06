@@ -22,3 +22,4 @@ deepdiff
 pip
 langchain-text-splitters
 python-ldap
+langchain-core
