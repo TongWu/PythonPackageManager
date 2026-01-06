@@ -36,7 +36,7 @@ azure-graphrbac==0.61.1
 azure-identity==1.19.0
 azure-keyvault-secrets==4.8.0
 azure-mgmt-authorization==4.0.0
-azure-mgmt-containerregistry==10.3.0
+azure-mgmt-containerregistry==13.0.0
 azure-mgmt-core==1.4.0
 azure-mgmt-keyvault==11.0.0
 azure-mgmt-network==29.0.0
@@ -83,7 +83,7 @@ cleo==2.1.0
 click==8.1.7
 click-default-group==1.2.4
 cloudpathlib==0.19.0
-cloudpickle==3.1.0
+cloudpickle==3.1.1
 colorama==0.4.6
 coloredlogs==15.0.1
 colorlog==6.8.2
@@ -248,7 +248,7 @@ langchain==0.4.0.dev0
 langchain-community==0.2.12
 langchain-core==0.3.40
 langchain-openai==0.1.22
-langchain-text-splitters==0.3.6
+langchain-text-splitters==0.3.11
 langcodes==3.4.1
 langdetect==1.0.9
 langsmith==0.3.11
@@ -389,7 +389,7 @@ polyfactory==2.16.2
 portalocker==2.10.1
 posthog==3.6.6
 pre-commit==3.8.0
-pre-commit-hooks==4.6.0
+pre-commit-hooks==5.0.0
 preshed==3.0.9
 prometheus-client==0.21.0
 prompthub-py==4.0.0
@@ -402,7 +402,7 @@ ptyprocess==0.7.0
 pure-eval==0.2.3
 py==1.11.0
 pyaml==23.12.0
-pyarrow==19.0.1
+pyarrow==21.0.0
 pyarrow-hotfix==0.6
 pyasn1==0.6.1
 pyasn1-modules==0.4.1
@@ -435,7 +435,7 @@ pyproject-api==1.8.0
 pyproject-hooks==1.2.0
 PySocks==1.7.1
 pytesseract==0.3.4
-pytest==8.3.3
+pytest==8.4.2
 pytest-asyncio==0.23.6
 pytest-cov==6.3.0
 pytest-httpx==0.28.0
