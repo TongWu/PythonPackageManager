@@ -244,7 +244,7 @@ keyring==25.4.1
 kiwisolver==1.4.7
 knack==0.12.0
 lancedb==0.11.0
-langchain==0.3.19
+langchain==0.4.0.dev0
 langchain-community==0.2.12
 langchain-core==0.3.40
 langchain-openai==0.1.22
@@ -290,7 +290,7 @@ marisa-trie==1.2.0
 Markdown==3.7
 markdown-it-py==3.0.0
 MarkupSafe==3.0.2
-marshmallow==3.23.0
+marshmallow==3.26.2
 matplotlib==3.9.4
 matplotlib-inline==0.1.7
 mccabe==0.7.0
