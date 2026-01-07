@@ -141,7 +141,7 @@ farm-haystack==1.25.5
 fastapi==0.111.1
 fastapi-cli==0.0.5
 fastjsonschema==2.20.0
-filelock==3.16.1
+filelock==3.20.2
 filetype==1.2.0
 flake8==7.0.0
 Flask==3.0.3
