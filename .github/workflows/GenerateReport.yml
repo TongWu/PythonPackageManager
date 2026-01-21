@@ -34,12 +34,12 @@ jobs:
         id: setup-python
         uses: ./.github/workflows/PythonSetup
 
-      - name: DEBUG - Check pip health
+      - name: Check pip health
         run: |
           pip --version
           python -c "import pip._vendor.resolvelib; print(pip._vendor.resolvelib.__file__)"
 
-      - name: DEBUG - Print config.env
+      - name: Print config.env
         run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
 
       - name: Set up rclone
@@ -47,7 +47,7 @@ jobs:
         with:
           rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
 
-      - name: DEBUG - Check rclone connection
+      - name: Check rclone connection
         run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
 
   generate-report:
@@ -69,12 +69,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mutt
 
-      - name: DEBUG - Check pip health
+      - name: Check pip health
         run: |
           pip --version
           python -c "import pip._vendor.resolvelib; print(pip._vendor.resolvelib.__file__)"
 
-      - name: DEBUG - Print config.env
+      - name: Print config.env
         run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
 
       - name: Run report generation and extract personal report info
@@ -112,7 +112,7 @@ jobs:
             fi
           fi
 
-      - name: DEBUG - Show changed files
+      - name: Show changed files
         run: |
           git status
           git diff --name-only
@@ -166,10 +166,10 @@ jobs:
           subject=""
           body_file="email_body.txt"
       
-          echo "🔍 DEBUG: UPGRADE_COUNT = ${{ env.UPGRADE_COUNT }}"
-          echo "🔍 DEBUG: UPGRADE_TABLE length = ${#UPGRADE_TABLE}"
-          echo "🔍 DEBUG: UPGRADE_TABLE preview = ${UPGRADE_TABLE:0:100}..."
-          echo "🔍 DEBUG: Full UPGRADE_TABLE content:"
+          echo "UPGRADE_COUNT = ${{ env.UPGRADE_COUNT }}"
+          echo "UPGRADE_TABLE length = ${#UPGRADE_TABLE}"
+          echo "UPGRADE_TABLE preview = ${UPGRADE_TABLE:0:100}..."
+          echo "Full UPGRADE_TABLE content:"
           echo "$UPGRADE_TABLE"
       
           if [ "${{ env.UPGRADE_COUNT }}" -eq 0 ]; then
@@ -183,7 +183,6 @@ jobs:
           fi
       
           echo "📧 Sending mail with subject: $subject"
-          echo "Sending to: ${{ secrets.EMAIL_TO_LIST }}"
       
           mutt -e "set smtp_url=smtp://${{ secrets.EMAIL_USERNAME }}:${{ secrets.EMAIL_PASSWORD }}@${{ secrets.SMTP_SERVER }}:${{ secrets.SMTP_PORT }}" \
                -e "set from='${{ secrets.EMAIL_USERNAME }}'" \
@@ -217,7 +216,7 @@ jobs:
         with:
           rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
 
-      - name: DEBUG - Check rclone connection
+      - name: Check rclone connection
         run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
 
       - name: Upload Weekly Report to Google Drive
