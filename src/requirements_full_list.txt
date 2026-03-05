@@ -168,12 +168,12 @@ murmurhash==1.0.10
 mypy-extensions==1.1.0
 narwhals==2.15.0
 nbclient==0.10.2
-nbconvert==7.16.6
+nbconvert==7.17.0
 nbformat==5.10.4
 ndg-httpsclient==0.5.1
 nest-asyncio==1.6.0
 networkx==3.5
-nltk==3.9.1
+nltk==3.9.3
 notebook==7.4.5
 notebook-shim==0.2.4
 numpy==1.26.4
@@ -195,7 +195,7 @@ opentelemetry-resource-detector-azure==0.1.5
 opentelemetry-sdk==1.39.0
 opentelemetry-semantic-conventions==0.60b0
 opentelemetry-util-http==0.60b0
-orjson==3.10.18
+orjson==3.11.7
 overrides==7.7.0
 packaging==25.0
 pandas==2.3.2
