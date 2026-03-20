@@ -9,7 +9,8 @@ on:
       - '**.py'
       - '.github/workflows/GenerateReport-Dev.yml'
       - '.github/workflows/PythonSetup/**'
-      - '.github/workflows/RcloneSetup/**'
+      # rclone (disabled)
+      # - '.github/workflows/RcloneSetup/**'
       - '.env'
       - 'src/**'
       - 'requirements.txt'
@@ -40,13 +41,14 @@ jobs:
       - name: DEBUG - Print config.env
         run: grep -E '^(FULL_RELOAD_PACKAGES|BASE_PACKAGE_CSV|REQUIREMENTS_FILE)=' .env || true
 
-      - name: Set up rclone
-        uses: ./.github/workflows/RcloneSetup
-        with:
-          rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
-
-      - name: DEBUG - Check rclone connection
-        run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
+      # --- rclone (disabled) ---
+      # - name: Set up rclone
+      #   uses: ./.github/workflows/RcloneSetup
+      #   with:
+      #     rclone_conf_base64: ${{ secrets.RCLONE_CONF_BASE64 }}
+      #
+      # - name: DEBUG - Check rclone connection
+      #   run: rclone lsd gdrive:/Geek/PythonPackageManager/WeeklyReports/
 
   generate-report:
     name: Generate Weekly Report
