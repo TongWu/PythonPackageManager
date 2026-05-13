@@ -40,12 +40,13 @@ binaryornot==0.4.4
 bleach==6.2.0
 blis==1.3.3
 build==1.2.1
+cachetools==5.5.2
 catalogue==2.0.10
 certifi==2024.7.4
 cffi==2.0.0
 chardet==5.2.0
 charset-normalizer==3.4.4
-click==8.3.2
+click==8.3.3
 click-default-group==1.2.4
 cloudpathlib==0.19.0
 cloudpickle==2.2.1
@@ -79,7 +80,7 @@ fqdn==1.5.1
 frozenlist==1.8.0
 fsspec==2023.10.0
 gitdb==4.0.12
-gitpython==3.1.45
+gitpython==3.1.50
 graphql-core==3.2.6
 greenlet==3.2.4
 h11==0.16.0
@@ -105,11 +106,11 @@ jupyter-client==8.6.3
 jupyter-core==5.8.1
 jupyter-events==0.12.0
 jupyter-lsp==2.3.0
-jupyter-server==2.17.0
+jupyter-server==2.18.2
 jupyter-server-terminals==0.5.3
-jupyterlab==4.4.8
+jupyterlab==4.5.7
 jupyterlab-pygments==0.3.0
-jupyterlab-server==2.27.3
+jupyterlab-server==2.28.0
 kedro==1.3.0
 kedro-azureml==1.0.0
 kedro-boot==0.3.0
@@ -123,7 +124,7 @@ langcodes==3.4.1
 language-data==1.2.0
 lark==1.3.1
 lazy-loader==0.4
-litestar==2.17.0
+litestar==2.21.1
 litestar-htmx==0.5.0
 marisa-trie==1.2.0
 markdown-it-py==4.0.0
@@ -132,7 +133,7 @@ marshmallow==3.26.2
 matplotlib==3.9.4
 matplotlib-inline==0.1.7
 mdurl==0.1.2
-mistune==3.1.4
+mistune==3.2.1
 mltable==1.6.1
 more-itertools==10.7.0
 msal==1.34.0
@@ -150,7 +151,7 @@ nbformat==5.10.4
 nest-asyncio==1.6.0
 networkx==3.5
 nltk==3.9.4
-notebook==7.4.5
+notebook==7.5.6
 notebook-shim==0.2.4
 numpy==1.26.4
 oauthlib==3.3.1
@@ -181,7 +182,7 @@ parso==0.8.5
 pathspec==0.12.1
 patsy==0.5.6
 pexpect==4.9.0
-pillow==12.1.1
+pillow==12.2.0
 platformdirs==4.5.0
 plotly==6.3.0
 pluggy==1.6.0
@@ -211,7 +212,7 @@ pytest-mock==2.0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-json-logger==3.3.0
-python-multipart==0.0.26
+python-multipart==0.0.28
 python-slugify==8.0.4
 pytoolconfig==1.3.1
 pytz==2025.2
@@ -261,7 +262,6 @@ threadpoolctl==3.6.0
 tinycss2==1.4.0
 tomli==2.2.1
 tomli-w==1.2.0
-toposort==1.10
 tornado==6.5.5
 tqdm==4.67.1
 traitlets==5.14.3
