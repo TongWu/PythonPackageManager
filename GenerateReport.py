@@ -50,7 +50,7 @@ from utils.UpgradeInstruction import (
     generate_upgrade_instruction,
     generate_current_dependency_json,
 )
-from utils.InstructionFormatter import instruction_to_text
+from utils.InstructionFormatter import instruction_to_text, dedupe_vuln_details
 from utils.utils import run_py
 
 # ---------------- Configuration ----------------
@@ -419,8 +419,10 @@ def main() -> None:
                 base_pkg = row.get('Package Name', '')
                 cur_ver = row.get('Current Version', '')
                 suggested_ver = row.get('Suggested Upgrade', '')
-                current_vuln_details = row.get('Current Version Vulnerability Details', '')
-                upgrade_vuln_details = row.get('Upgrade Vulnerability Details', '')
+                # Dedupe for the email only: the raw text repeats each advisory once per version
+                # and can exceed 100KB; the full text stays in the CSV/HTML attachments.
+                current_vuln_details = dedupe_vuln_details(row.get('Current Version Vulnerability Details', ''))
+                upgrade_vuln_details = dedupe_vuln_details(row.get('Upgrade Vulnerability Details', ''))
                 
                 # Combine current and upgrade vulnerability details
                 vuln_details = current_vuln_details
