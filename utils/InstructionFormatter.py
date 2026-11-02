@@ -2,7 +2,27 @@
 # -*- coding: utf-8 -*-
 """Utilities to convert upgrade instruction JSON to human-readable text."""
 
+import re
 from typing import Any, Mapping, Optional
+
+
+def dedupe_vuln_details(details: Optional[str]) -> str:
+    """
+    Collapse vulnerability details that repeat the same advisory once per version.
+
+    Input is the "ID, SEVERITY, summary, score, affects: ..." lines produced by
+    VulnChecker.fetch_osv, optionally joined per version as "ver: <lines>; ver: <lines>".
+    Returns one line per advisory ID (first occurrence wins, version prefix dropped).
+
+    shortcut: entries are split on "; <token>: ", so a summary containing that pattern
+    would be split early; upgrade to structured data if that ever shows up.
+    """
+    seen = {}
+    for entry in re.split(r"\n|;\s+(?=[^\s:;]+:\s)", details or ""):
+        entry = re.sub(r"^[^\s:;,]+:\s+(?=\S+,\s)", "", entry.strip())
+        if entry and entry != "None":
+            seen.setdefault(entry.split(",")[0], entry)
+    return "\n".join(seen.values())
 
 
 def instruction_to_text(instruction: Optional[Mapping[str, Any]]) -> str:
